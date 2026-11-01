@@ -165,6 +165,10 @@ window.App = {
       if (lobbyInput) lobbyInput.value = roomParam.toUpperCase();
       if (mpInput) mpInput.value = roomParam.toUpperCase();
     }
+    if (urlParams.get('demo') === 'table') {
+      document.getElementById('lobby-screen')?.classList.add('hidden');
+      this.loadWillowsTroopParty();
+    }
 
     this.updateUI();
     this.animate();

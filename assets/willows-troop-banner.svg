@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0e12"/>
+      <stop offset="50%" stop-color="#131922"/>
+      <stop offset="100%" stop-color="#0d1117"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a68956"/>
+      <stop offset="50%" stop-color="#e2c792"/>
+      <stop offset="100%" stop-color="#a68956"/>
+    </linearGradient>
+    <linearGradient id="crimsonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#dc2626"/>
+      <stop offset="100%" stop-color="#7f1d1d"/>
+    </linearGradient>
+    <linearGradient id="mossGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4d7c5b"/>
+      <stop offset="100%" stop-color="#284632"/>
+    </linearGradient>
+    <radialGradient id="tableGlow" cx="72%" cy="52%" r="42%">
+      <stop offset="0%" stop-color="#c2a36b" stop-opacity="0.16"/>
+      <stop offset="60%" stop-color="#4d7c5b" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#0b0e12" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="380" rx="14" fill="url(#bgGrad)"/>
+  <rect width="1200" height="380" rx="14" fill="url(#tableGlow)"/>
+  <rect x="1.5" y="1.5" width="1197" height="377" rx="12.5" fill="none" stroke="#263040" stroke-width="1.5"/>
+  <rect x="12" y="12" width="1176" height="356" rx="8" fill="none" stroke="#c2a36b" stroke-opacity="0.22" stroke-width="1"/>
+
+  <!-- RIGHT SIDE: ISOMETRIC 3D TABLETOP ILLUSTRATION -->
+  <g transform="translate(830, 210)">
+    <!-- Table Shadow -->
+    <polygon points="0,-115 270,-15 0,95 -270,-15" fill="#050709" opacity="0.7" transform="translate(0, 22)"/>
+
+    <!-- Wooden Table Frame (3D Slab) -->
+    <polygon points="-275,-12 0,98 275,-12 275,10 0,120 -275,10" fill="#23150c" stroke="#5c4028" stroke-width="1"/>
+    <polygon points="0,-118 275,-12 0,98 -275,-12" fill="#362112" stroke="#a68956" stroke-width="2"/>
+
+    <!-- Inner Map Surface -->
+    <polygon points="0,-104 246,-10 0,84 -246,-10" fill="#18221d" stroke="#4d7c5b" stroke-opacity="0.5" stroke-width="1"/>
+
+    <!-- Isometric Tactical Grid Lines -->
+    <g stroke="#ffffff" stroke-opacity="0.16" stroke-width="1">
+      <line x1="-205" y1="-26" x2="41" y2="68"/>
+      <line x1="-164" y1="-42" x2="82" y2="52"/>
+      <line x1="-123" y1="-58" x2="123" y2="36"/>
+      <line x1="-82" y1="-74" x2="164" y2="20"/>
+      <line x1="-41" y1="-90" x2="205" y2="4"/>
+
+      <line x1="205" y1="-26" x2="-41" y2="68"/>
+      <line x1="164" y1="-42" x2="-82" y2="52"/>
+      <line x1="123" y1="-58" x2="-123" y2="36"/>
+      <line x1="82" y1="-74" x2="-164" y2="20"/>
+      <line x1="41" y1="-90" x2="-205" y2="4"/>
+    </g>
+
+    <!-- Distance Ruler Line & Measurement -->
+    <line x1="-95" y1="-12" x2="65" y2="-28" stroke="#e2c792" stroke-width="2" stroke-dasharray="5,4"/>
+    <ellipse cx="-95" cy="-12" rx="14" ry="7" fill="none" stroke="#e2c792" stroke-width="2"/>
+    <ellipse cx="65" cy="-28" rx="14" ry="7" fill="none" stroke="#e2c792" stroke-width="2"/>
+    <rect x="-48" y="-44" width="68" height="20" rx="4" fill="#0d1117" stroke="#c2a36b" stroke-width="1"/>
+    <text x="-14" y="-30" fill="#e2c792" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" text-anchor="middle">6.0 m</text>
+
+    <!-- 3D Miniature Standee 1 (Willow Frog Druid) -->
+    <g transform="translate(-95, -12)">
+      <ellipse cx="0" cy="0" rx="20" ry="10" fill="#1e293b" stroke="#dc2626" stroke-width="2"/>
+      <rect x="-15" y="-48" width="30" height="46" rx="5" fill="#15221a" stroke="#e2c792" stroke-width="1.5"/>
+      <!-- Frog Silhouette with Red Cape -->
+      <path d="M-12,-8 C-14,-22 14,-22 12,-8 Z" fill="url(#crimsonGrad)"/>
+      <ellipse cx="0" cy="-24" rx="9" ry="7" fill="#68a378"/>
+      <circle cx="-4" cy="-29" r="3" fill="#68a378"/>
+      <circle cx="4" cy="-29" r="3" fill="#68a378"/>
+      <circle cx="-4" cy="-29" r="1.3" fill="#111"/>
+      <circle cx="4" cy="-29" r="1.3" fill="#111"/>
+    </g>
+
+    <!-- 3D Miniature Standee 2 (Party Member) -->
+    <g transform="translate(65, -28)">
+      <ellipse cx="0" cy="0" rx="20" ry="10" fill="#1e293b" stroke="#3b82f6" stroke-width="2"/>
+      <rect x="-14" y="-46" width="28" height="44" rx="5" fill="#161f30" stroke="#93c5fd" stroke-width="1.5"/>
+      <circle cx="0" cy="-28" r="7" fill="#93c5fd"/>
+      <path d="M-9,-10 C-9,-20 9,-20 9,-10 Z" fill="#2563eb"/>
+    </g>
+
+    <!-- 3D Polyhedral D20 Die on Table -->
+    <g transform="translate(18, 28)">
+      <polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11" fill="url(#crimsonGrad)" stroke="#fca5a5" stroke-width="1.5"/>
+      <line x1="0" y1="-22" x2="0" y2="22" stroke="#fca5a5" stroke-opacity="0.5" stroke-width="1"/>
+      <line x1="-19" y1="-11" x2="19" y2="11" stroke="#fca5a5" stroke-opacity="0.5" stroke-width="1"/>
+      <line x1="19" y1="-11" x2="-19" y2="11" stroke="#fca5a5" stroke-opacity="0.5" stroke-width="1"/>
+      <rect x="-14" y="-44" width="28" height="18" rx="4" fill="#0d1117" stroke="#e2c792" stroke-width="1.2"/>
+      <text x="0" y="-31" fill="#f8fafc" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" text-anchor="middle">20</text>
+    </g>
+
+    <!-- Brass Table Corner Accents -->
+    <circle cx="0" cy="-115" r="4" fill="#e2c792"/>
+    <circle cx="270" cy="-12" r="4" fill="#e2c792"/>
+    <circle cx="0" cy="95" r="4" fill="#e2c792"/>
+    <circle cx="-270" cy="-12" r="4" fill="#e2c792"/>
+  </g>
+
+  <!-- LEFT SIDE: BRANDING & FEATURE HIGHLIGHTS -->
+  <g transform="translate(56, 72)">
+    <rect x="0" y="0" width="165" height="26" rx="13" fill="#17231c" stroke="#4d7c5b" stroke-width="1"/>
+    <text x="82.5" y="17" fill="#86efac" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2" text-anchor="middle">VIRTUAL TABLETOP 3D</text>
+
+    <text x="0" y="78" fill="#f4efe6" font-family="Georgia, serif" font-size="48" font-weight="700" letter-spacing="0.5">Willow's Troop</text>
+    <text x="0" y="112" fill="#9aa5b4" font-family="Segoe UI, sans-serif" font-size="16" font-weight="400">
+      Mesa virtual 3D interativa para sessoes de RPG online no navegador.
+    </text>
+
+    <!-- Feature Pills -->
+    <g transform="translate(0, 145)">
+      <rect x="0" y="0" width="215" height="58" rx="8" fill="#141922" stroke="#263040" stroke-width="1"/>
+      <text x="16" y="24" fill="#e2c792" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700">Mapas, Zoom &amp; Grade</text>
+      <text x="16" y="43" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="11.5">Enquadramento livre e mesa adaptavel</text>
+
+      <rect x="230" y="0" width="215" height="58" rx="8" fill="#141922" stroke="#263040" stroke-width="1"/>
+      <text x="246" y="24" fill="#e2c792" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700">Miniaturas &amp; Dados 3D</text>
+      <text x="246" y="43" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="11.5">Standees, tokens, modelos e fisica</text>
+
+      <rect x="0" y="70" width="215" height="58" rx="8" fill="#141922" stroke="#263040" stroke-width="1"/>
+      <text x="16" y="94" fill="#e2c792" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700">Multiplayer WebRTC P2P</text>
+      <text x="16" y="113" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="11.5">Salas instantaneas por link ou codigo</text>
+
+      <rect x="230" y="70" width="215" height="58" rx="8" fill="#141922" stroke="#263040" stroke-width="1"/>
+      <text x="246" y="94" fill="#e2c792" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700">Biblioteca Persistente</text>
+      <text x="246" y="113" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="11.5">Mapas salvos via IndexedDB</text>
+    </g>
+  </g>
+</svg>
