@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Willow's Troop</title>
   <link rel="icon" type="image/jpeg" href="assets/frog-druid-logo.jpg" />
-  <link rel="stylesheet" href="css/styles.css?v=3.3" />
+  <link rel="stylesheet" href="css/styles.css?v=3.4" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
@@ -200,7 +200,7 @@
   <!-- TOP-LEFT MINIMAL NAVIGATION & CAMERA CONTROLS (No App Name Clutter) -->
   <div id="top-left-bar">
     <div class="hud-pill">
-      <button class="btn" onclick="App.openLobbyScreen()" title="Voltar à Seleção de Mapas">
+      <button class="btn" id="btn-open-lobby" onclick="App.openLobbyScreen()" title="Voltar à Seleção de Mapas (Mestre)">
         <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
         Mapas
       </button>
@@ -219,10 +219,13 @@
   <!-- TOP-RIGHT MINIMAL SESSION & FILE CONTROLS -->
   <div id="top-right-bar">
     <div class="hud-pill">
-      <select id="role-select" style="width: 118px; border:none; background:transparent; font-weight:500;" onchange="Multiplayer.updateProfile(null, null, this.value); App.refreshAllPieceVisibilities();">
+      <select id="role-select" style="width: 126px; border:none; background:transparent; font-weight:600; cursor:pointer;" onchange="App.setViewRole(this.value, true)">
         <option value="gm">Visão: Mestre</option>
         <option value="player">Visão: Jogador</option>
       </select>
+      <button class="icon-btn" id="btn-sync-gm-cam" onclick="App.handleCameraSyncAction()" title="Sincronizar Câmera com a Visão do Mestre">
+        <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
       <button class="btn" onclick="document.getElementById('multiplayer-modal').classList.add('open')">
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span id="top-room-badge">Sessão Local</span>
@@ -251,7 +254,7 @@
     <button class="icon-btn" data-tool="draw" data-tooltip="Desenhar na Mesa (3)" onclick="App.setTool('draw')">
       <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
     </button>
-    <button class="icon-btn" data-tool="fog" data-tooltip="Névoa de Guerra (4)" onclick="App.setTool('fog')">
+    <button class="icon-btn" id="btn-tool-fog" data-tool="fog" data-tooltip="Névoa de Guerra (4)" onclick="App.setTool('fog')">
       <svg viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
     </button>
     <button class="icon-btn" data-tool="ping" data-tooltip="Sinalizar Ponto (5 ou Alt+Clique)" onclick="App.setTool('ping')">
@@ -263,10 +266,10 @@
 
     <div class="dock-divider"></div>
 
-    <button class="icon-btn" data-tooltip="Adicionar Miniaturas & Objetos" onclick="App.toggleDrawer('library-drawer')">
+    <button class="icon-btn" id="btn-dock-library" data-tooltip="Adicionar Miniaturas & Objetos" onclick="App.toggleDrawer('library-drawer')">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
     </button>
-    <button class="icon-btn" data-tooltip="Configurar Mapa & Grade" onclick="App.toggleDrawer('mapgrid-drawer')">
+    <button class="icon-btn" id="btn-dock-mapgrid" data-tooltip="Configurar Mapa & Grade (Mestre)" onclick="App.toggleDrawer('mapgrid-drawer')">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
     </button>
   </nav>
@@ -915,11 +918,11 @@
     </div>
   </div>
 
-  <script src="js/maps.js?v=3.3"></script>
-  <script src="js/models3d.js?v=3.3"></script>
-  <script src="js/dice3d.js?v=3.3"></script>
-  <script src="js/multiplayer.js?v=3.3"></script>
-  <script src="js/app.js?v=3.3"></script>
+  <script src="js/maps.js?v=3.4"></script>
+  <script src="js/models3d.js?v=3.4"></script>
+  <script src="js/dice3d.js?v=3.4"></script>
+  <script src="js/multiplayer.js?v=3.4"></script>
+  <script src="js/app.js?v=3.4"></script>
 
   <script>
     function switchDrawerTab(tabId, el) {

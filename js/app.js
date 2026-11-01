@@ -33,7 +33,18 @@ window.App = {
     isPanning: false,
     lastMouseX: 0,
     lastMouseY: 0,
-    keys: {}
+    keys: {},
+    followGmCamera: false,
+    lastGmCamSend: 0
+  },
+
+  hostCamState: {
+    targetX: 0,
+    targetZ: 0,
+    radius: 32,
+    phi: 0.80,
+    theta: 0,
+    isTopDown: false
   },
 
   mapConfig: {
@@ -796,6 +807,17 @@ window.App = {
     }
   },
 
+  getSerializedCamState() {
+    return {
+      targetX: Math.round(this.camState.target.x * 100) / 100,
+      targetZ: Math.round(this.camState.target.z * 100) / 100,
+      radius: Math.round(this.camState.spherical.radius * 100) / 100,
+      phi: Math.round(this.camState.spherical.phi * 1000) / 1000,
+      theta: Math.round(this.camState.spherical.theta * 1000) / 1000,
+      isTopDown: !!this.camState.isTopDown
+    };
+  },
+
   getLightweightMapSettings() {
     return {
       preset: this.mapConfig.preset,
@@ -804,7 +826,8 @@ window.App = {
       lighting: this.mapConfig.lighting,
       transform: this.mapConfig.transform,
       grid: this.mapConfig.grid,
-      fogEnabled: this.mapConfig.fogEnabled
+      fogEnabled: this.mapConfig.fogEnabled,
+      gmCam: window.Multiplayer?.isHost ? this.getSerializedCamState() : this.hostCamState
     };
   },
 
@@ -932,15 +955,19 @@ window.App = {
       this.pieceLabels.set(pieceData.id, label);
     }
 
+    const isGM = window.Multiplayer.myRole === 'gm';
+    const isInvisible = (pieceData.conditions || []).includes('invisible');
     const showHp = pieceData.maxHp > 0 && pieceData.style !== 'prop' && pieceData.style !== 'pin';
     const hpPercent = showHp ? Math.max(0, Math.min(100, (pieceData.hp / pieceData.maxHp) * 100)) : 0;
     const hpColor = hpPercent > 50 ? '#4d9e6d' : (hpPercent > 25 ? '#d99b26' : '#c94a4a');
-    const acHtml = pieceData.ac ? `<span class="ac-badge">CA ${pieceData.ac}</span>` : '';
+    const acHtml = (isGM && pieceData.ac) ? `<span class="ac-badge">CA ${pieceData.ac}</span>` : '';
+    const invBadge = (isGM && isInvisible) ? `<span class="ac-badge" style="background:rgba(96,165,250,0.22); color:#93c5fd;">OCULTO</span>` : '';
 
     label.innerHTML = `
       <div class="name-tag" style="border-color: ${pieceData.color || 'rgba(255,255,255,0.2)'}">
         <span>${this.escapeHtml(pieceData.name || 'Peça')}</span>
         ${acHtml}
+        ${invBadge}
       </div>
       ${showHp ? `
         <div class="hp-bar-wrap">
@@ -1465,19 +1492,139 @@ window.App = {
         radiusPx,
         mode
       });
+      if (window.Multiplayer.scheduleRetainedRoomPublish) {
+        window.Multiplayer.scheduleRetainedRoomPublish();
+      }
+    }
+  },
+
+  setViewRole(role, showFeedback = true) {
+    const cleanRole = role === 'player' ? 'player' : 'gm';
+    const roleSelect = document.getElementById('role-select');
+    if (roleSelect) roleSelect.value = cleanRole;
+
+    window.Multiplayer.updateProfile(null, null, cleanRole);
+
+    if (cleanRole === 'gm') {
+      // If user is a joined guest switching to "Visão: Mestre", sync their camera to the GM's live camera!
+      if (!window.Multiplayer.isHost) {
+        this.camState.followGmCamera = true;
+        this.applyHostCamState(this.hostCamState, true);
+        if (showFeedback) {
+          this.showToast('Visão: Mestre — Sincronizado com a câmera e visão completa do Mestre!');
+        }
+      } else if (showFeedback) {
+        this.showToast('Visão: Mestre — Todas as ferramentas, névoa translúcida e peças ocultas ativadas.');
+      }
+    } else {
+      this.camState.followGmCamera = false;
+      if (showFeedback) {
+        this.showToast('Visão: Jogador — Câmera livre individual e visão restrita de jogador.');
+      }
+    }
+
+    this.refreshAllPieceVisibilities();
+  },
+
+  handleCameraSyncAction() {
+    if (window.Multiplayer.isHost) {
+      const cam = this.getSerializedCamState();
+      window.Multiplayer.broadcast({
+        type: 'force_gm_cam',
+        cam
+      });
+      this.showToast('Visão de todos os jogadores focada na sua câmera atual!');
+    } else {
+      this.camState.followGmCamera = !this.camState.followGmCamera;
+      if (this.camState.followGmCamera) {
+        this.applyHostCamState(this.hostCamState, true);
+        this.showToast('Seguindo a câmera do Mestre em tempo real.');
+      } else {
+        this.showToast('Câmera livre ativada.');
+      }
+      this.refreshAllPieceVisibilities();
+    }
+  },
+
+  applyHostCamState(cam, immediate = false) {
+    if (!cam) return;
+    this.hostCamState = Object.assign(this.hostCamState, cam);
+    if (immediate) {
+      if (typeof cam.isTopDown === 'boolean' && this.camState.isTopDown !== cam.isTopDown) {
+        this.camState.isTopDown = cam.isTopDown;
+        document.getElementById('btn-cam-topdown')?.classList.toggle('active', this.camState.isTopDown);
+      }
+      this.camState.target.set(Number(cam.targetX) || 0, 0, Number(cam.targetZ) || 0);
+      this.camState.spherical.radius = Number(cam.radius) || 32;
+      this.camState.spherical.phi = Number(cam.phi) || 0.80;
+      this.camState.spherical.theta = Number(cam.theta) || 0;
+      this.updateCameraTransform(false);
     }
   },
 
   refreshAllPieceVisibilities() {
     const isGM = window.Multiplayer.myRole === 'gm';
-    if (this.fogMat) {
-      this.fogMat.opacity = isGM ? 0.55 : 0.98;
+    const roleSelect = document.getElementById('role-select');
+    if (roleSelect && roleSelect.value !== window.Multiplayer.myRole) {
+      roleSelect.value = window.Multiplayer.myRole;
     }
+
+    // 1. Toggle GM-only HUD controls (Map selection, Fog tool, Map & Grid configuration)
+    const btnLobby = document.getElementById('btn-open-lobby');
+    const btnFogTool = document.getElementById('btn-tool-fog');
+    const btnMapGrid = document.getElementById('btn-dock-mapgrid');
+    const btnSyncCam = document.getElementById('btn-sync-gm-cam');
+
+    if (btnLobby) btnLobby.style.display = isGM ? '' : 'none';
+    if (btnFogTool) btnFogTool.style.display = isGM ? '' : 'none';
+    if (btnMapGrid) btnMapGrid.style.display = isGM ? '' : 'none';
+
+    if (!isGM) {
+      document.getElementById('mapgrid-drawer')?.classList.add('closed');
+      if (this.activeTool === 'fog') {
+        this.setTool('grab');
+      }
+    }
+
+    if (btnSyncCam) {
+      if (window.Multiplayer.isHost) {
+        btnSyncCam.title = 'Puxar Câmera dos Jogadores para Minha Visão Atual';
+        btnSyncCam.classList.remove('active');
+      } else {
+        btnSyncCam.title = this.camState.followGmCamera
+          ? 'Seguindo Câmera do Mestre (Clique para Câmera Livre)'
+          : 'Sincronizar Câmera com a Visão do Mestre';
+        btnSyncCam.classList.toggle('active', !!this.camState.followGmCamera);
+      }
+    }
+
+    // 2. Fog of War opacity: Translucent (0.48) in GM View vs Solid Opaque (0.98) in Player View
+    if (this.fogMat) {
+      this.fogMat.opacity = isGM ? 0.48 : 0.98;
+      this.fogMat.needsUpdate = true;
+    }
+
+    // 3. Piece Visibility & Ghost Transparency for Invisible Pieces in GM View
     this.pieces.forEach((p, id) => {
       const mesh = this.pieceMeshes.get(id);
       if (mesh) {
         mesh.visible = this.isPieceVisibleToCurrentUser(p);
+        const isInvisible = (p.conditions || []).includes('invisible');
+        const fig = mesh.getObjectByName('figureGroup');
+        if (fig) {
+          fig.traverse(child => {
+            if (child.isMesh && child.material) {
+              if (isInvisible && isGM) {
+                child.material.transparent = true;
+                child.material.opacity = 0.48;
+              } else if (child.userData.origOpacity !== undefined) {
+                child.material.opacity = child.userData.origOpacity;
+              }
+            }
+          });
+        }
       }
+      this.updatePieceDOMLabel(p);
     });
   },
 
@@ -1666,7 +1813,7 @@ window.App = {
     return obj ? obj.userData.dieId : null;
   },
 
-  updateCameraTransform() {
+  updateCameraTransform(broadcast = true) {
     if (this.camState.isTopDown) {
       this.camera.position.set(
         this.camState.target.x,
@@ -1674,15 +1821,25 @@ window.App = {
         this.camState.target.z + 0.01
       );
       this.camera.lookAt(this.camState.target);
-      return;
+    } else {
+      const { radius, phi, theta } = this.camState.spherical;
+      const sinPhiRadius = Math.sin(phi) * radius;
+      this.camera.position.x = this.camState.target.x + sinPhiRadius * Math.sin(theta);
+      this.camera.position.y = this.camState.target.y + Math.cos(phi) * radius;
+      this.camera.position.z = this.camState.target.z + sinPhiRadius * Math.cos(theta);
+      this.camera.lookAt(this.camState.target);
     }
 
-    const { radius, phi, theta } = this.camState.spherical;
-    const sinPhiRadius = Math.sin(phi) * radius;
-    this.camera.position.x = this.camState.target.x + sinPhiRadius * Math.sin(theta);
-    this.camera.position.y = this.camState.target.y + Math.cos(phi) * radius;
-    this.camera.position.z = this.camState.target.z + sinPhiRadius * Math.cos(theta);
-    this.camera.lookAt(this.camState.target);
+    if (broadcast && window.Multiplayer && window.Multiplayer.isHost && window.Multiplayer.roomCode) {
+      const now = performance.now();
+      if (now - this.camState.lastGmCamSend > 85) {
+        this.camState.lastGmCamSend = now;
+        window.Multiplayer.broadcast({
+          type: 'gm_cam',
+          cam: this.getSerializedCamState()
+        });
+      }
+    }
   },
 
   worldToScreen(pos3D) {
@@ -2438,7 +2595,9 @@ window.App = {
     );
     return {
       mapSettings: lightSettings,
-      pieces: piecesArr
+      pieces: piecesArr,
+      fogDataUrl: this.fogCanvas ? this.fogCanvas.toDataURL('image/png') : null,
+      drawDataUrl: this.drawCanvas ? this.drawCanvas.toDataURL('image/webp', 0.6) : null
     };
   },
 
@@ -2461,6 +2620,10 @@ window.App = {
     this.mapConfig.transform = s.transform || { zoom: 1, panX: 0, panY: 0, tableScale: 1, autoFitTable: true };
     this.mapConfig.grid = Object.assign(this.mapConfig.grid, s.grid || {});
     this.mapConfig.fogEnabled = !!s.fogEnabled;
+
+    if (s.gmCam && !window.Multiplayer.isHost) {
+      this.applyHostCamState(s.gmCam, !!this.camState.followGmCamera);
+    }
 
     if (s.hasCustomImage) {
       if (!this.mapConfig.customImageUrl || (s.customMapHash && s.customMapHash !== prevHash)) {
@@ -2619,6 +2782,17 @@ window.App = {
       case 'fog_reset':
         this.fillFogCanvas(msg.coverAll);
         break;
+      case 'gm_cam':
+        if (msg.cam && !window.Multiplayer.isHost) {
+          this.applyHostCamState(msg.cam, false);
+        }
+        break;
+      case 'force_gm_cam':
+        if (msg.cam && !window.Multiplayer.isHost) {
+          this.applyHostCamState(msg.cam, true);
+          this.showToast('O Mestre focou a visão da mesa aqui!');
+        }
+        break;
       case 'dice_throw':
         window.DiceRoller3D.throwDice(msg.rollData, null);
         break;
@@ -2688,6 +2862,23 @@ window.App = {
     if (this.camState.keys['KeyD'] || this.camState.keys['ArrowRight']) {
       this.camState.target.addScaledVector(right, panSpeed);
       this.updateCameraTransform();
+    }
+
+    // Smoothly follow Host's camera when guest is in "Visão: Mestre" (or followGmCamera is enabled)
+    if (!window.Multiplayer.isHost && this.camState.followGmCamera && !this.camState.isOrbiting && !this.camState.isPanning) {
+      const hc = this.hostCamState;
+      if (hc) {
+        if (typeof hc.isTopDown === 'boolean' && this.camState.isTopDown !== hc.isTopDown) {
+          this.camState.isTopDown = hc.isTopDown;
+          document.getElementById('btn-cam-topdown')?.classList.toggle('active', this.camState.isTopDown);
+        }
+        this.camState.target.x = THREE.MathUtils.lerp(this.camState.target.x, Number(hc.targetX) || 0, 0.16);
+        this.camState.target.z = THREE.MathUtils.lerp(this.camState.target.z, Number(hc.targetZ) || 0, 0.16);
+        this.camState.spherical.radius = THREE.MathUtils.lerp(this.camState.spherical.radius, Number(hc.radius) || 32, 0.16);
+        this.camState.spherical.phi = THREE.MathUtils.lerp(this.camState.spherical.phi, Number(hc.phi) || 0.8, 0.16);
+        this.camState.spherical.theta = THREE.MathUtils.lerp(this.camState.spherical.theta, Number(hc.theta) || 0, 0.16);
+        this.updateCameraTransform(false);
+      }
     }
 
     // Grabbed Piece Follow
