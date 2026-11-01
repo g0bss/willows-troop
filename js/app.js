@@ -779,7 +779,7 @@ window.App = {
     try {
       let w = this.sourceMapWidth || 1024;
       let h = this.sourceMapHeight || 1024;
-      const maxDim = 920;
+      const maxDim = 840;
       if (Math.max(w, h) > maxDim) {
         const ratio = maxDim / Math.max(w, h);
         w = Math.round(w * ratio);
@@ -790,7 +790,7 @@ window.App = {
       c.height = h;
       const ctx = c.getContext('2d');
       ctx.drawImage(this.sourceMapElement, 0, 0, w, h);
-      return c.toDataURL('image/jpeg', 0.66);
+      return c.toDataURL('image/jpeg', 0.64);
     } catch (e) {
       return this.mapConfig.customImageUrl;
     }
@@ -813,17 +813,16 @@ window.App = {
       type: 'map_settings_only',
       settings: this.getLightweightMapSettings()
     });
+    if (window.Multiplayer.scheduleRetainedRoomPublish) {
+      window.Multiplayer.scheduleRetainedRoomPublish();
+    }
   },
 
-  broadcastCustomMapWithImage(targetPlayerId = null) {
-    const jpegUrl = this.cachedNetMapJpeg || this.getFastNetworkCustomMapJpeg() || this.mapConfig.customImageUrl;
-    window.Multiplayer.broadcast({
-      type: 'custom_map_sync',
-      targetId: targetPlayerId || null,
-      customMapHash: this.mapConfig.customMapHash || 'custom_1',
-      customImageUrl: jpegUrl,
-      settings: this.getLightweightMapSettings()
-    });
+  broadcastCustomMapWithImage(_targetPlayerId = null) {
+    this.broadcastMapSettingsOnly();
+    if (window.Multiplayer.streamCustomMapChunks) {
+      window.Multiplayer.streamCustomMapChunks(null, null);
+    }
   },
 
   initRulerVisuals() {
@@ -898,6 +897,9 @@ window.App = {
         type: 'piece_update',
         piece: pieceData
       });
+      if (window.Multiplayer.scheduleRetainedRoomPublish) {
+        window.Multiplayer.scheduleRetainedRoomPublish();
+      }
     }
   },
 
@@ -969,6 +971,9 @@ window.App = {
         type: 'piece_delete',
         pieceId
       });
+      if (window.Multiplayer.scheduleRetainedRoomPublish) {
+        window.Multiplayer.scheduleRetainedRoomPublish();
+      }
     }
   },
 
