@@ -1,0 +1,12 @@
+{
+  "name": "tabletop-rpg-3d",
+  "version": "1.0.0",
+  "description": "Tabletop Simulator 3D Web para RPG de Mesa com Grid, Standees 3D, Dados com Física, Névoa de Guerra e Multiplayer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

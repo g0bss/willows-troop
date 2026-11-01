@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Willow's Troop</title>
+  <link rel="icon" type="image/jpeg" href="assets/frog-druid-logo.jpg" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+  <!-- ========================================================================
+       WILLOW'S TROOP — LOBBY / MAP & TABLE SELECTION SCREEN
+       ======================================================================== -->
+  <section id="lobby-screen">
+    <div class="lobby-container">
+      <!-- Top Brand Header (Only shown here in the Selection Screen) -->
+      <div class="lobby-header">
+        <div class="lobby-brand">
+          <div class="logo-medallion">
+            <img src="assets/frog-druid-logo.jpg" alt="Willow's Troop Logo" />
+          </div>
+          <div class="lobby-title-group">
+            <h1>Willow's Troop</h1>
+            <p>Escolha o mapa da sessão, configure a grade ou conecte-se à mesa do seu grupo.</p>
+          </div>
+        </div>
+
+        <!-- Quick Join Friend's Room or Load Saved File -->
+        <div class="lobby-session-bar">
+          <input type="text" id="lobby-join-code" placeholder="Código da Sala (ex: RPG-4821)" style="width: 195px; text-transform: uppercase;" />
+          <button class="btn" onclick="joinFromLobby()">Conectar à Sala</button>
+          <button class="btn" onclick="document.getElementById('load-json-input').click()" title="Carregar sessão salva (.json)">
+            <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Abrir Arquivo
+          </button>
+        </div>
+      </div>
+
+      <!-- Map & Table Selection Grid -->
+      <div>
+        <div class="lobby-section-title">Selecione o Mapa da Mesa</div>
+        <div class="map-cards-grid" id="lobby-map-grid">
+
+          <div class="map-card selected" onclick="App.selectLobbyMap('forest', this)">
+            <div class="map-card-thumb">
+              <img data-map-thumb="forest" alt="Clareira de Willow" />
+            </div>
+            <div class="map-card-body">
+              <span class="map-card-title">Clareira de Willow</span>
+              <span class="map-card-desc">Trilha na floresta antiga, riacho e ponte de madeira.</span>
+              <div class="map-card-actions">
+                <button class="map-action-btn" onclick="App.openMapEditorForPreset('forest', event)">Ajustar / Zoom</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="map-card" onclick="App.selectLobbyMap('dungeon', this)">
+            <div class="map-card-thumb">
+              <img data-map-thumb="dungeon" alt="Masmorra de Pedra" />
+            </div>
+            <div class="map-card-body">
+              <span class="map-card-title">Masmorra de Pedra Negra</span>
+              <span class="map-card-desc">Salões subterrâneos, corredores e iluminação de tochas.</span>
+              <div class="map-card-actions">
+                <button class="map-action-btn" onclick="App.openMapEditorForPreset('dungeon', event)">Ajustar / Zoom</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="map-card" onclick="App.selectLobbyMap('tavern', this)">
+            <div class="map-card-thumb">
+              <img data-map-thumb="tavern" alt="Taverna" />
+            </div>
+            <div class="map-card-body">
+              <span class="map-card-title">Estalagem & Taverna</span>
+              <span class="map-card-desc">Salão de madeira aquecido por lareira, balcão e mesas.</span>
+              <div class="map-card-actions">
+                <button class="map-action-btn" onclick="App.openMapEditorForPreset('tavern', event)">Ajustar / Zoom</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="map-card" onclick="App.selectLobbyMap('arcane', this)">
+            <div class="map-card-thumb">
+              <img data-map-thumb="arcane" alt="Santuário Arcano" />
+            </div>
+            <div class="map-card-body">
+              <span class="map-card-title">Santuário Arcano</span>
+              <span class="map-card-desc">Plataforma circular rúnica suspensa sobre o abismo.</span>
+              <div class="map-card-actions">
+                <button class="map-action-btn" onclick="App.openMapEditorForPreset('arcane', event)">Ajustar / Zoom</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="map-card" onclick="App.selectLobbyMap('city', this)">
+            <div class="map-card-thumb">
+              <img data-map-thumb="city" alt="Praça da Cidade" />
+            </div>
+            <div class="map-card-body">
+              <span class="map-card-title">Distrito da Cidade</span>
+              <span class="map-card-desc">Ruas de paralelepípedo, chafariz central e telhados.</span>
+              <div class="map-card-actions">
+                <button class="map-action-btn" onclick="App.openMapEditorForPreset('city', event)">Ajustar / Zoom</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="map-card" onclick="App.selectLobbyMap('parchment', this)">
+            <div class="map-card-thumb">
+              <img data-map-thumb="parchment" alt="Pergaminho Tático" />
+            </div>
+            <div class="map-card-body">
+              <span class="map-card-title">Pergaminho em Branco</span>
+              <span class="map-card-desc">Tabuleiro neutro ideal para desenhar mapas livremente.</span>
+              <div class="map-card-actions">
+                <button class="map-action-btn" onclick="App.openMapEditorForPreset('parchment', event)">Ajustar / Zoom</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload Custom Map Card -->
+          <div class="map-card" id="lobby-custom-map-card" onclick="document.getElementById('lobby-map-file').click()">
+            <div class="map-card-thumb">
+              <img id="lobby-custom-preview" style="display:none;" alt="Mapa Customizado" />
+              <div class="map-card-upload" id="lobby-custom-placeholder">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span style="font-size:12px; font-weight:600;">Enviar Imagem do PC</span>
+              </div>
+            </div>
+            <div class="map-card-body">
+              <span class="map-card-title">Mapa Personalizado</span>
+              <span class="map-card-desc">Carregue qualquer imagem (PNG, JPG, WebP) do seu computador.</span>
+            </div>
+            <input type="file" id="lobby-map-file" accept="image/*" style="display:none" onchange="App.handleLobbyCustomMapUpload(this)" />
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Bottom Table Configuration & Launch Bar -->
+      <div class="lobby-footer-bar">
+        <div class="lobby-options-group">
+          <div class="lobby-option-item">
+            <label>Seu Nome na Sessão</label>
+            <input type="text" id="lobby-player-name" value="Mestre" style="width: 150px;" />
+          </div>
+
+          <div class="lobby-option-item">
+            <label>Formato da Grade</label>
+            <select id="lobby-grid-type" style="width: 155px;">
+              <option value="square">Grade Quadrada</option>
+              <option value="hex">Grade Hexagonal</option>
+              <option value="none">Sem Grade</option>
+            </select>
+          </div>
+
+          <div class="lobby-option-item">
+            <label>Peças Iniciais na Mesa</label>
+            <select id="lobby-setup-mode" style="width: 210px;">
+              <option value="empty">Mesa Limpa (Sem miniaturas)</option>
+              <option value="party">Com Grupo (Willow's Troop)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button class="btn" style="padding:11px 16px; font-weight:600;" onclick="App.openMapEditorForCurrentSelection()">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+            Editar Mapa / Zoom
+          </button>
+
+          <button class="btn-enter-table" onclick="App.enterTableFromLobby()">
+            <span>Abrir Mesa</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       3D TABLETOP VIEWPORT & MINIMAL HUD
+       ======================================================================== -->
+  <div id="canvas-container"></div>
+  <div id="labels-container"></div>
+  <div id="toast-container"></div>
+
+  <!-- TOP-LEFT MINIMAL NAVIGATION & CAMERA CONTROLS (No App Name Clutter) -->
+  <div id="top-left-bar">
+    <div class="hud-pill">
+      <button class="btn" onclick="App.openLobbyScreen()" title="Voltar à Seleção de Mapas">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Mapas
+      </button>
+      <button class="icon-btn" id="btn-cam-topdown" onclick="App.toggleTopDownCamera()" title="Alternar Câmera 2D / 3D (Atalho: T)">
+        <svg viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button class="icon-btn" onclick="App.camState.target.set(0,0,0); App.updateCameraTransform();" title="Centralizar Mesa (Espaço)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-toggle-labels" onclick="App.showAllLabels = !App.showAllLabels; this.classList.toggle('active', App.showAllLabels);" title="Mostrar/Ocultar Todos os Nomes">
+        <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- TOP-RIGHT MINIMAL SESSION & FILE CONTROLS -->
+  <div id="top-right-bar">
+    <div class="hud-pill">
+      <select id="role-select" style="width: 118px; border:none; background:transparent; font-weight:500;" onchange="Multiplayer.updateProfile(null, null, this.value); App.refreshAllPieceVisibilities();">
+        <option value="gm">Visão: Mestre</option>
+        <option value="player">Visão: Jogador</option>
+      </select>
+      <button class="btn" onclick="document.getElementById('multiplayer-modal').classList.add('open')">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span id="top-room-badge">Sessão Local</span>
+      </button>
+      <button class="icon-btn" onclick="saveCampaignJSON()" title="Salvar Mesa (.json)">
+        <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      </button>
+      <button class="icon-btn" onclick="document.getElementById('load-json-input').click()" title="Carregar Mesa (.json)">
+        <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <button class="icon-btn" onclick="document.getElementById('chat-drawer').classList.toggle('closed')" title="Histórico de Rolagens & Chat">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <input type="file" id="load-json-input" accept=".json" style="display:none" onchange="loadCampaignJSONFile(this)" />
+    </div>
+  </div>
+
+  <!-- LEFT VERTICAL ICON DOCK (Clean SVG Vector Icons + Hover Tooltips) -->
+  <nav id="left-tool-dock">
+    <button class="icon-btn active" data-tool="grab" data-tooltip="Mover / Pegar Peças (1)" onclick="App.setTool('grab')">
+      <svg viewBox="0 0 24 24"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+    </button>
+    <button class="icon-btn" data-tool="ruler" data-tooltip="Régua de Distância (2 ou Tab)" onclick="App.setTool('ruler')">
+      <svg viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
+    </button>
+    <button class="icon-btn" data-tool="draw" data-tooltip="Desenhar na Mesa (3)" onclick="App.setTool('draw')">
+      <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+    </button>
+    <button class="icon-btn" data-tool="fog" data-tooltip="Névoa de Guerra (4)" onclick="App.setTool('fog')">
+      <svg viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+    </button>
+    <button class="icon-btn" data-tool="ping" data-tooltip="Sinalizar Ponto (5 ou Alt+Clique)" onclick="App.setTool('ping')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+    </button>
+    <button class="icon-btn" data-tool="pin" data-tooltip="Inserir Marcador 3D (6)" onclick="App.setTool('pin')">
+      <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    </button>
+
+    <div class="dock-divider"></div>
+
+    <button class="icon-btn" data-tooltip="Adicionar Miniaturas & Objetos" onclick="App.toggleDrawer('library-drawer')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    </button>
+    <button class="icon-btn" data-tooltip="Configurar Mapa & Grade" onclick="App.toggleDrawer('mapgrid-drawer')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    </button>
+  </nav>
+
+  <!-- CONTEXTUAL SUB-TOOLBAR FOR DRAWING OR FOG OF WAR -->
+  <div id="sub-toolbar">
+    <div id="sub-draw-controls" style="display:none; align-items:center; gap:8px;">
+      <span>Traço:</span>
+      <select id="draw-mode-select" style="width:110px" onchange="App.drawConfig.mode = this.value">
+        <option value="pen">Caneta Livre</option>
+        <option value="line">Linha Reta</option>
+        <option value="circle">Círculo</option>
+        <option value="rect">Retângulo</option>
+        <option value="eraser">Borracha</option>
+      </select>
+      <input type="color" id="draw-color-picker" value="#c94a4a" onchange="App.drawConfig.color = this.value" />
+      <input type="range" min="2" max="32" value="8" style="width:75px" oninput="App.drawConfig.size = Number(this.value)" />
+      <button class="btn btn-danger" onclick="App.clearTableDrawings(true)">Limpar</button>
+    </div>
+
+    <div id="sub-fog-controls" style="display:none; align-items:center; gap:8px;">
+      <span>Névoa:</span>
+      <select id="fog-mode-select" style="width:125px" onchange="App.fogConfig.mode = this.value">
+        <option value="reveal">Revelar Área</option>
+        <option value="hide">Ocultar Área</option>
+      </select>
+      <input type="range" min="25" max="180" value="90" style="width:80px" oninput="App.fogConfig.brushSize = Number(this.value)" />
+      <button class="btn" onclick="App.toggleFogOfWar(true); App.fillFogCanvas(true); Multiplayer.broadcast({type:'fog_reset', coverAll:true});">Cobrir Tudo</button>
+      <button class="btn" onclick="App.fillFogCanvas(false); Multiplayer.broadcast({type:'fog_reset', coverAll:false});">Revelar Tudo</button>
+    </div>
+  </div>
+
+  <!-- SLIDE-OVER DRAWER 1: PIECE & MODEL LIBRARY (Closed by Default!) -->
+  <aside id="library-drawer" class="drawer-panel drawer-left closed">
+    <div class="drawer-header">
+      <h3>Adicionar Peças à Mesa</h3>
+      <button class="btn" style="padding:2px 7px" onclick="document.getElementById('library-drawer').classList.add('closed')">✕</button>
+    </div>
+
+    <div class="drawer-tabs">
+      <div class="drawer-tab active" onclick="switchDrawerTab('lib-custom', this)">Com Imagem</div>
+      <div class="drawer-tab" onclick="switchDrawerTab('lib-presets', this)">Personagens</div>
+      <div class="drawer-tab" onclick="switchDrawerTab('lib-props', this)">Cenário</div>
+    </div>
+
+    <!-- Custom Image Standee/Token Creator -->
+    <div id="lib-custom" class="drawer-body">
+      <div class="section-box">
+        <div class="section-title">Nova Miniatura Personalizada</div>
+        <div class="form-col">
+          <label>Nome:</label>
+          <input type="text" id="custom-piece-name" placeholder="Nome do personagem" value="Aventureiro" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-col" style="flex:1">
+            <label>Formato 3D:</label>
+            <select id="custom-piece-style">
+              <option value="standee">Standee 3D em Pé</option>
+              <option value="token">Token Moeda 3D</option>
+              <option value="model3d">Modelo 3D Esculpido</option>
+            </select>
+          </div>
+          <div class="form-col">
+            <label>Base:</label>
+            <input type="color" id="custom-piece-color" value="#4d7c5b" />
+          </div>
+        </div>
+
+        <div class="form-col">
+          <label>Imagem (Arquivo ou URL):</label>
+          <button class="btn" onclick="document.getElementById('custom-piece-file').click()" style="width:100%">
+            Selecionar Imagem do PC...
+          </button>
+          <input type="file" id="custom-piece-file" accept="image/*" style="display:none" onchange="handleCustomPieceFile(this)" />
+          <span id="custom-file-status" style="font-size:11px; color:var(--accent-moss-bright); display:none;">Imagem carregada.</span>
+          <input type="text" id="custom-piece-url" placeholder="Ou cole URL da imagem..." />
+        </div>
+
+        <div class="form-row">
+          <div class="form-col" style="flex:1">
+            <label>HP Máx:</label>
+            <input type="number" id="custom-piece-hp" value="35" min="0" />
+          </div>
+          <div class="form-col" style="flex:1">
+            <label>CA:</label>
+            <input type="number" id="custom-piece-ac" value="15" min="0" />
+          </div>
+          <div class="form-col" style="flex:1">
+            <label>Escala:</label>
+            <select id="custom-piece-size">
+              <option value="0.5">0.5x</option>
+              <option value="1" selected>1x1</option>
+              <option value="2">2x2</option>
+              <option value="3">3x3</option>
+              <option value="4">4x4</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%; margin-top:4px; padding:8px;" onclick="App.spawnCustomImagePiece()">
+          Adicionar à Mesa
+        </button>
+      </div>
+    </div>
+
+    <!-- Preset Miniatures (Illustrated Thumbnails — No Emojis!) -->
+    <div id="lib-presets" class="drawer-body" style="display:none;">
+      <div class="section-box">
+        <div class="form-row">
+          <label>Formato:</label>
+          <select id="spawn-style-select" style="width:165px">
+            <option value="standee">Standee 3D em Pé</option>
+            <option value="model3d">Miniatura 3D Esculpida</option>
+            <option value="token">Token Moeda 3D</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="section-title">Aventureiros</div>
+        <div class="catalog-grid">
+          <div class="catalog-item" onclick="App.spawnPresetPiece('hero','druid','Willow (Druida)','#4d7c5b',1)">
+            <img data-cat-thumb="druid" data-cat-color="#4d7c5b" alt="Druida" />
+            <span class="cat-name">Druida</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('hero','warrior','Guerreiro','#2563eb',1)">
+            <img data-cat-thumb="warrior" data-cat-color="#2563eb" alt="Guerreiro" />
+            <span class="cat-name">Guerreiro</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('hero','mage','Mago','#7c3aed',1)">
+            <img data-cat-thumb="mage" data-cat-color="#7c3aed" alt="Mago" />
+            <span class="cat-name">Mago</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('hero','rogue','Ladino','#334155',1)">
+            <img data-cat-thumb="rogue" data-cat-color="#334155" alt="Ladino" />
+            <span class="cat-name">Ladino</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('hero','archer','Arqueiro','#15803d',1)">
+            <img data-cat-thumb="archer" data-cat-color="#15803d" alt="Arqueiro" />
+            <span class="cat-name">Arqueiro</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('hero','cleric','Clérigo','#b45309',1)">
+            <img data-cat-thumb="cleric" data-cat-color="#b45309" alt="Clérigo" />
+            <span class="cat-name">Clérigo</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="section-title">Criaturas & Inimigos</div>
+        <div class="catalog-grid">
+          <div class="catalog-item" onclick="App.spawnPresetPiece('monster','dragon','Dragão','#991b1b',2)">
+            <img data-cat-thumb="dragon" data-cat-color="#991b1b" alt="Dragão" />
+            <span class="cat-name">Dragão (2x2)</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('monster','skeleton','Esqueleto','#475569',1)">
+            <img data-cat-thumb="skeleton" data-cat-color="#475569" alt="Esqueleto" />
+            <span class="cat-name">Esqueleto</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('monster','goblin','Goblin','#9a3412',1)">
+            <img data-cat-thumb="goblin" data-cat-color="#9a3412" alt="Goblin" />
+            <span class="cat-name">Goblin</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('monster','orc','Orc','#7f1d1d',1)">
+            <img data-cat-thumb="orc" data-cat-color="#7f1d1d" alt="Orc" />
+            <span class="cat-name">Orc</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('monster','wolf','Lobo','#374151',1)">
+            <img data-cat-thumb="wolf" data-cat-color="#374151" alt="Lobo" />
+            <span class="cat-name">Lobo</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('monster','slime','Limo','#065f46',1)">
+            <img data-cat-thumb="slime" data-cat-color="#065f46" alt="Limo" />
+            <span class="cat-name">Limo 3D</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D Scenery Props (Vector SVG Previews) -->
+    <div id="lib-props" class="drawer-body" style="display:none;">
+      <div class="section-box">
+        <div class="section-title">Objetos de Cenário 3D</div>
+        <div class="catalog-grid">
+          <div class="catalog-item" onclick="App.spawnPresetPiece('prop','wall','Parede','#64748b',1)">
+            <svg viewBox="0 0 24 24" stroke="#94a3b8" fill="none" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="1"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="14" x2="21" y2="14"/><line x1="9" y1="5" x2="9" y2="10"/><line x1="15" y1="10" x2="15" y2="14"/><line x1="11" y1="14" x2="11" y2="19"/></svg>
+            <span class="cat-name">Parede</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('prop','door','Porta (F abre)','#78350f',1)">
+            <svg viewBox="0 0 24 24" stroke="#c2a36b" fill="none" stroke-width="1.6"><path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14"/><path d="M2 20h20"/><path d="M14 12v.01"/></svg>
+            <span class="cat-name">Porta 3D</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('prop','pillar','Pilar','#94a3b8',1)">
+            <svg viewBox="0 0 24 24" stroke="#94a3b8" fill="none" stroke-width="1.6"><rect x="6" y="3" width="12" height="3"/><rect x="8" y="6" width="8" height="12"/><rect x="6" y="18" width="12" height="3"/></svg>
+            <span class="cat-name">Pilar</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('prop','chest','Baú','#b45309',1)">
+            <svg viewBox="0 0 24 24" stroke="#c2a36b" fill="none" stroke-width="1.6"><rect x="3" y="7" width="18" height="13" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><rect x="10" y="10" width="4" height="4"/></svg>
+            <span class="cat-name">Baú</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('prop','campfire','Fogueira','#ea580c',1)">
+            <svg viewBox="0 0 24 24" stroke="#f97316" fill="none" stroke-width="1.6"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4Z"/></svg>
+            <span class="cat-name">Fogueira</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('prop','tree','Árvore','#15803d',1)">
+            <svg viewBox="0 0 24 24" stroke="#68a378" fill="none" stroke-width="1.6"><polygon points="12 2 19 11 15 11 20 18 4 18 9 11 5 11 12 2"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
+            <span class="cat-name">Árvore</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('prop','barrel','Barril','#78350f',1)">
+            <svg viewBox="0 0 24 24" stroke="#a68956" fill="none" stroke-width="1.6"><ellipse cx="12" cy="5" rx="6" ry="2"/><path d="M6 5v14c0 1.1 2.7 2 6 2s6-.9 6-2V5"/><line x1="6" y1="10" x2="18" y2="10"/><line x1="6" y1="15" x2="18" y2="15"/></svg>
+            <span class="cat-name">Barril</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('prop','portal','Portal','#7c3aed',1.5)">
+            <svg viewBox="0 0 24 24" stroke="#a855f7" fill="none" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/></svg>
+            <span class="cat-name">Portal</span>
+          </div>
+          <div class="catalog-item" onclick="App.spawnPresetPiece('pin','quest','Marcador','#c2a36b',1)">
+            <svg viewBox="0 0 24 24" stroke="#c2a36b" fill="none" stroke-width="1.6"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span class="cat-name">Marcador</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- SLIDE-OVER DRAWER 2: MAP & GRID CONFIGURATION (Closed by Default!) -->
+  <aside id="mapgrid-drawer" class="drawer-panel drawer-left closed">
+    <div class="drawer-header">
+      <h3>Mapa & Grade (Grid)</h3>
+      <button class="btn" style="padding:2px 7px" onclick="document.getElementById('mapgrid-drawer').classList.add('closed')">✕</button>
+    </div>
+
+    <div class="drawer-body">
+      <div class="section-box">
+        <div class="section-title">Imagem do Mapa</div>
+        <button class="btn btn-primary" style="width:100%" onclick="document.getElementById('map-upload-input').click()">
+          Enviar Mapa do Computador...
+        </button>
+        <input type="file" id="map-upload-input" accept="image/*" style="display:none" onchange="handleMapUploadFile(this)" />
+
+        <div class="form-row">
+          <input type="text" id="map-url-input" placeholder="Ou cole URL de um mapa..." />
+          <button class="btn" onclick="applyMapUrlInput()">OK</button>
+        </div>
+
+        <div class="catalog-grid" style="margin-top:4px;">
+          <div class="catalog-item" onclick="App.applyMapPreset('forest', true)">
+            <img data-map-thumb="forest" style="border-radius:4px; width:100%; height:44px;" alt="Floresta" />
+            <span class="cat-name">Clareira</span>
+          </div>
+          <div class="catalog-item" onclick="App.applyMapPreset('dungeon', true)">
+            <img data-map-thumb="dungeon" style="border-radius:4px; width:100%; height:44px;" alt="Masmorra" />
+            <span class="cat-name">Masmorra</span>
+          </div>
+          <div class="catalog-item" onclick="App.applyMapPreset('tavern', true)">
+            <img data-map-thumb="tavern" style="border-radius:4px; width:100%; height:44px;" alt="Taverna" />
+            <span class="cat-name">Taverna</span>
+          </div>
+          <div class="catalog-item" onclick="App.applyMapPreset('arcane', true)">
+            <img data-map-thumb="arcane" style="border-radius:4px; width:100%; height:44px;" alt="Santuário" />
+            <span class="cat-name">Santuário</span>
+          </div>
+          <div class="catalog-item" onclick="App.applyMapPreset('city', true)">
+            <img data-map-thumb="city" style="border-radius:4px; width:100%; height:44px;" alt="Cidade" />
+            <span class="cat-name">Cidade</span>
+          </div>
+          <div class="catalog-item" onclick="App.applyMapPreset('parchment', true)">
+            <img data-map-thumb="parchment" style="border-radius:4px; width:100%; height:44px;" alt="Pergaminho" />
+            <span class="cat-name">Pergaminho</span>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:8px;">Meus Mapas Salvos</div>
+        <div id="drawer-saved-maps-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+
+        <button class="btn" style="width:100%; margin-top:6px;" onclick="App.openMapEditorForCurrentSelection()">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          Editar Enquadramento / Zoom / Mesa
+        </button>
+      </div>
+
+      <div class="section-box">
+        <div class="section-title">Zoom do Mapa & Tamanho da Mesa</div>
+        <div id="drawer-table-dims-badge" style="font-size:11px; color:var(--accent-gold); font-weight:600;">Mesa atual: 40 × 40 un</div>
+
+        <div class="form-row">
+          <label>Zoom Mapa: <strong id="drawer-map-zoom-val">1.00x</strong></label>
+          <input type="range" id="drawer-map-zoom" min="0.5" max="5" step="0.05" value="1" style="width:115px"
+            oninput="App.mapConfig.transform.zoom = Number(this.value); App.renderMapCanvasWithTransform(true);" />
+        </div>
+
+        <div class="form-row">
+          <label>Escala Mesa: <strong id="drawer-table-scale-val">1.00x</strong></label>
+          <input type="range" id="drawer-table-scale" min="0.7" max="2.5" step="0.05" value="1" style="width:115px"
+            oninput="App.mapConfig.transform.tableScale = Number(this.value); App.renderMapCanvasWithTransform(true);" />
+        </div>
+
+        <div class="form-row">
+          <button class="btn" style="flex:1" onclick="App.mapConfig.transform = {zoom:1, panX:0, panY:0, tableScale:1, autoFitTable:true}; App.renderMapCanvasWithTransform(true);">
+            Resetar Zoom / Mesa
+          </button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="section-title">Configuração da Grade</div>
+        <div class="form-row">
+          <label>Tipo:</label>
+          <select id="grid-type-select" style="width:155px" onchange="App.mapConfig.grid.type = this.value; App.refreshGridLayer(true);">
+            <option value="square">Quadrada</option>
+            <option value="hex">Hexagonal</option>
+            <option value="none">Desativada</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>Tamanho: <strong id="grid-size-val">2 un</strong></label>
+          <input type="range" id="grid-size-range" min="1" max="5" step="0.25" value="2" style="width:120px"
+            oninput="App.mapConfig.grid.cellSize = Number(this.value); document.getElementById('grid-size-val').textContent = this.value + ' un'; App.refreshGridLayer(true);" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-col" style="flex:1">
+            <label>Ajuste X (px):</label>
+            <input type="number" id="grid-offset-x" value="0" step="4" oninput="App.mapConfig.grid.offsetX = Number(this.value); App.refreshGridLayer(true);" />
+          </div>
+          <div class="form-col" style="flex:1">
+            <label>Ajuste Y (px):</label>
+            <input type="number" id="grid-offset-y" value="0" step="4" oninput="App.mapConfig.grid.offsetY = Number(this.value); App.refreshGridLayer(true);" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>Opacidade:</label>
+          <input type="range" id="grid-opacity-range" min="0" max="100" value="26" style="width:110px"
+            oninput="App.mapConfig.grid.opacity = Number(this.value)/100; App.refreshGridLayer(true);" />
+          <input type="color" id="grid-color-input" value="#ffffff" oninput="App.mapConfig.grid.color = this.value; App.refreshGridLayer(true);" />
+        </div>
+
+        <div class="form-row">
+          <label><input type="checkbox" id="grid-snap-check" checked onchange="App.mapConfig.grid.snap = this.checked;" /> Encaixar peças na grade (G)</label>
+        </div>
+        <div class="form-row">
+          <label><input type="checkbox" id="grid-coords-check" onchange="App.mapConfig.grid.showCoords = this.checked; App.refreshGridLayer(true);" /> Exibir coordenadas (A1, B2)</label>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="section-title">Ambiente & Névoa</div>
+        <div class="form-row">
+          <label>Iluminação:</label>
+          <select id="lighting-select" style="width:155px" onchange="App.applyLightingMood(this.value, true)">
+            <option value="tavern">Ambiente Quente</option>
+            <option value="day">Luz do Dia</option>
+            <option value="night">Noturno</option>
+            <option value="dungeon">Penumbra</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label><input type="checkbox" id="fog-enable-check" onchange="App.toggleFogOfWar(this.checked, true)" /> Ativar Névoa de Guerra</label>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT CONTEXTUAL INSPECTOR DRAWER (Only visible when a piece is selected!) -->
+  <aside id="inspector-drawer" class="drawer-panel drawer-right closed">
+    <div class="drawer-header">
+      <h3>Propriedades da Peça</h3>
+      <button class="btn" style="padding:2px 7px" onclick="App.selectPiece(null)">✕</button>
+    </div>
+
+    <div class="drawer-body">
+      <div class="section-box">
+        <div class="form-col">
+          <label>Nome:</label>
+          <input type="text" id="insp-name" oninput="App.updateSelectedPieceFromInspector()" />
+        </div>
+        <div class="form-row">
+          <div class="form-col" style="flex:1">
+            <label>Formato:</label>
+            <select id="insp-style" onchange="App.updateSelectedPieceFromInspector()">
+              <option value="standee">Standee 3D em Pé</option>
+              <option value="model3d">Modelo 3D</option>
+              <option value="token">Token Moeda</option>
+              <option value="pin">Marcador</option>
+              <option value="prop">Cenário</option>
+            </select>
+          </div>
+          <div class="form-col">
+            <label>Cor:</label>
+            <input type="color" id="insp-color" oninput="App.updateSelectedPieceFromInspector()" />
+          </div>
+        </div>
+
+        <button class="btn" onclick="document.getElementById('insp-image-file').click()">
+          Alterar Imagem da Peça...
+        </button>
+        <input type="file" id="insp-image-file" accept="image/*" style="display:none" onchange="changeSelectedPieceImage(this)" />
+      </div>
+
+      <div class="section-box">
+        <div class="section-title">Atributos</div>
+        <div class="form-row">
+          <div class="form-col" style="flex:1">
+            <label>HP Atual:</label>
+            <input type="number" id="insp-hp" oninput="App.updateSelectedPieceFromInspector()" />
+          </div>
+          <div class="form-col" style="flex:1">
+            <label>HP Máx:</label>
+            <input type="number" id="insp-maxhp" oninput="App.updateSelectedPieceFromInspector()" />
+          </div>
+          <div class="form-col" style="flex:1">
+            <label>CA:</label>
+            <input type="number" id="insp-ac" oninput="App.updateSelectedPieceFromInspector()" />
+          </div>
+        </div>
+        <div class="form-row" style="gap:4px;">
+          <button class="btn btn-danger" style="flex:1" onclick="App.adjustSelectedHp(-5)">-5</button>
+          <button class="btn btn-danger" style="flex:1" onclick="App.adjustSelectedHp(-1)">-1</button>
+          <button class="btn" style="flex:1" onclick="App.adjustSelectedHp(1)">+1</button>
+          <button class="btn" style="flex:1" onclick="App.adjustSelectedHp(5)">+5</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="section-title">Escala & Posição</div>
+        <div class="form-row">
+          <div class="form-col" style="flex:1">
+            <label>Escala:</label>
+            <select id="insp-size" onchange="App.updateSelectedPieceFromInspector()">
+              <option value="0.5">0.5x</option>
+              <option value="1">1x1</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2x2</option>
+              <option value="3">3x3</option>
+              <option value="4">4x4</option>
+            </select>
+          </div>
+          <div class="form-col" style="flex:1">
+            <label>Elevação (m):</label>
+            <input type="number" id="insp-elevation" step="1.5" min="0" oninput="App.updateSelectedPieceFromInspector()" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label><input type="checkbox" id="insp-aura" onchange="App.updateSelectedPieceFromInspector()" /> Aura</label>
+          <label><input type="checkbox" id="insp-locked" onchange="App.updateSelectedPieceFromInspector()" /> Travar (L)</label>
+        </div>
+
+        <div id="insp-conditions" class="condition-grid">
+          <span class="cond-pill" data-cond="poisoned" onclick="App.toggleConditionOnSelected('poisoned')">Envenenado</span>
+          <span class="cond-pill" data-cond="burning" onclick="App.toggleConditionOnSelected('burning')">Em Chamas</span>
+          <span class="cond-pill" data-cond="stunned" onclick="App.toggleConditionOnSelected('stunned')">Atordoado</span>
+          <span class="cond-pill" data-cond="blessed" onclick="App.toggleConditionOnSelected('blessed')">Abençoado</span>
+          <span class="cond-pill" data-cond="invisible" onclick="App.toggleConditionOnSelected('invisible')">Oculto (Mestre)</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <button class="btn" style="flex:1" onclick="App.duplicateSelectedPiece()">Duplicar</button>
+        <button class="btn btn-danger" style="flex:1" onclick="App.deletePiece(App.selectedPieceId, true)">Remover</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- BOTTOM COMPACT 3D DICE BAR (Geometric Vector Icons + Player Dice Color) -->
+  <div id="bottom-dice-bar">
+    <input type="color" id="dice-color-picker" value="#b91c1c" title="Cor dos seus Dados 3D"
+      style="width:28px; height:32px; border-radius:6px; cursor:pointer;"
+      onchange="DiceRoller3D.setDiceColor(this.value)" />
+
+    <select id="dice-count-select" style="width:52px; padding:4px; font-weight:600;" title="Quantidade de Dados">
+      <option value="1">1x</option>
+      <option value="2">2x</option>
+      <option value="3">3x</option>
+      <option value="4">4x</option>
+      <option value="6">6x</option>
+    </select>
+
+    <button class="dice-btn" onclick="rollTableDice(4)" title="Rolar d4">
+      <svg viewBox="0 0 24 24"><polygon points="12 3 21 19 3 19"/></svg>
+      <span>d4</span>
+    </button>
+    <button class="dice-btn" onclick="rollTableDice(6)" title="Rolar d6">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+      <span>d6</span>
+    </button>
+    <button class="dice-btn" onclick="rollTableDice(8)" title="Rolar d8">
+      <svg viewBox="0 0 24 24"><polygon points="12 2 21 12 12 22 3 12"/></svg>
+      <span>d8</span>
+    </button>
+    <button class="dice-btn" onclick="rollTableDice(10)" title="Rolar d10">
+      <svg viewBox="0 0 24 24"><polygon points="12 2 20 9 17 21 7 21 4 9"/></svg>
+      <span>d10</span>
+    </button>
+    <button class="dice-btn" onclick="rollTableDice(12)" title="Rolar d12">
+      <svg viewBox="0 0 24 24"><polygon points="12 2 19 6 21 14 16 21 8 21 3 14 5 6"/></svg>
+      <span>d12</span>
+    </button>
+    <button class="dice-btn" onclick="rollTableDice(20)" title="Rolar d20">
+      <svg viewBox="0 0 24 24"><polygon points="12 2 21 7 21 17 12 22 3 17 3 7"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="3" y1="7" x2="21" y2="17"/></svg>
+      <span>d20</span>
+    </button>
+    <button class="dice-btn" onclick="rollTableDice(100)" title="Rolar d100">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+      <span>d100</span>
+    </button>
+
+    <button class="icon-btn" onclick="DiceRoller3D.clearDice(true)" title="Recolher todos os dados da mesa">
+      <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    </button>
+  </div>
+
+  <!-- COLLAPSIBLE CHAT / ROLL LOG (Closed by Default!) -->
+  <div id="chat-drawer" class="closed">
+    <div class="drawer-header" style="padding:8px 12px;">
+      <h3>Registro & Chat</h3>
+      <button class="btn" style="padding:2px 6px" onclick="document.getElementById('chat-drawer').classList.add('closed')">✕</button>
+    </div>
+    <div id="chat-messages"></div>
+    <div style="display:flex; padding:6px; gap:5px; border-top:1px solid var(--border-muted);">
+      <input type="text" id="chat-input" placeholder="Mensagem ou /r 2d20..." onkeydown="if(event.key==='Enter') sendChatInput()" />
+      <button class="btn btn-primary" onclick="sendChatInput()">Enviar</button>
+    </div>
+  </div>
+
+  <!-- MODAL 1: MULTIPLAYER ROOM P2P -->
+  <div id="multiplayer-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="drawer-header">
+        <h3>Sessão Multiplayer (P2P)</h3>
+        <button class="btn" style="padding:2px 7px" onclick="document.getElementById('multiplayer-modal').classList.remove('open')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-box">
+          <div class="form-row">
+            <div class="form-col" style="flex:1">
+              <label>Seu Nome:</label>
+              <input type="text" id="mp-player-name" value="Mestre" onchange="Multiplayer.updateProfile(this.value, document.getElementById('mp-player-color').value, null)" />
+            </div>
+            <div class="form-col">
+              <label>Cor:</label>
+              <input type="color" id="mp-player-color" value="#c2a36b" onchange="Multiplayer.updateProfile(document.getElementById('mp-player-name').value, this.value, null)" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section-box">
+          <div class="section-title">Hospedar Sala</div>
+          <div class="room-code-box" id="modal-room-code">SESSÃO LOCAL</div>
+          <div class="form-row">
+            <button class="btn btn-primary" style="flex:1" onclick="Multiplayer.createRoom()">Gerar Código de Sala</button>
+            <button class="btn" onclick="copyRoomCode()">Copiar</button>
+          </div>
+        </div>
+
+        <div class="section-box">
+          <div class="section-title">Conectar a uma Sala</div>
+          <div class="form-row">
+            <input type="text" id="mp-join-code" placeholder="Código (ex: RPG-4821)" style="text-transform:uppercase;" />
+            <button class="btn btn-primary" onclick="Multiplayer.joinRoom(document.getElementById('mp-join-code').value)">Conectar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: DRAG & DROP IMAGE ACTION -->
+  <div id="drop-image-modal" class="modal-backdrop">
+    <div class="modal-card" style="width:360px;">
+      <div class="drawer-header">
+        <h3>Adicionar Imagem</h3>
+        <button class="btn" style="padding:2px 7px" onclick="document.getElementById('drop-image-modal').classList.remove('open')">✕</button>
+      </div>
+      <div class="modal-body">
+        <button class="btn btn-primary" style="padding:10px;" onclick="useDroppedImageAs('standee')">
+          Criar Miniatura Standee 3D em Pé
+        </button>
+        <button class="btn" style="padding:10px;" onclick="useDroppedImageAs('token')">
+          Criar Token Moeda 3D
+        </button>
+        <button class="btn" style="padding:10px;" onclick="useDroppedImageAs('map')">
+          Definir como Mapa do Tabuleiro
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: INTERACTIVE MAP FRAMING (ZOOM, PAN) & TABLE SIZE EDITOR -->
+  <div id="map-editor-modal" class="modal-backdrop">
+    <div class="modal-card" style="width: 720px; max-width: 95vw;">
+      <div class="drawer-header">
+        <h3>Ajustar Mapa (Zoom, Posição e Tamanho da Mesa)</h3>
+        <button class="btn" style="padding:2px 7px" onclick="App.mapEditorState.isOpen=false; document.getElementById('map-editor-modal').classList.remove('open')">✕</button>
+      </div>
+      <div class="modal-body" style="gap: 12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--text-secondary);">
+          <span>Arraste a imagem com o mouse para mover · Use o Scroll do mouse para dar Zoom na área desejada</span>
+          <strong id="map-editor-dims-info" style="color:var(--accent-gold);">Mesa: 40 × 40 un</strong>
+        </div>
+
+        <div style="position:relative; border-radius:8px; overflow:hidden; border:1px solid var(--border-subtle); background:#0b0e12; display:flex; justify-content:center;">
+          <canvas id="map-editor-canvas" width="680" height="390" style="cursor:grab; width:100%; height:auto; display:block;"></canvas>
+        </div>
+
+        <div class="section-box" style="gap:10px;">
+          <div class="form-row" style="gap:16px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex:1; gap:8px;">
+              <label>Zoom da Imagem: <strong id="map-editor-zoom-val">1.00x</strong></label>
+              <input type="range" id="map-editor-zoom" min="0.5" max="6" step="0.05" value="1" style="flex:1"
+                oninput="App.mapEditorState.zoom = Number(this.value); document.getElementById('map-editor-zoom-val').textContent = Number(this.value).toFixed(2) + 'x'; App.renderMapEditorPreview();" />
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; flex:1; gap:8px;">
+              <label>Tamanho da Mesa: <strong id="map-editor-table-scale-val">1.00x</strong></label>
+              <input type="range" id="map-editor-table-scale" min="0.7" max="2.5" step="0.05" value="1" style="flex:1"
+                oninput="App.mapEditorState.tableScale = Number(this.value); document.getElementById('map-editor-table-scale-val').textContent = Number(this.value).toFixed(2) + 'x'; App.renderMapEditorPreview();" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label style="cursor:pointer;">
+              <input type="checkbox" id="map-editor-autofit" checked
+                onchange="App.mapEditorState.autoFitTable = this.checked; App.renderMapEditorPreview();" />
+              Ajustar formato da mesa automaticamente à proporção do mapa (garantindo tamanho mínimo de 36 un)
+            </label>
+            <button class="btn" onclick="App.resetMapEditorTransform()">Centralizar / 1x</button>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="btn" onclick="App.mapEditorState.isOpen=false; document.getElementById('map-editor-modal').classList.remove('open')">Cancelar</button>
+          <button class="btn btn-primary" style="padding:8px 18px; font-weight:600;" onclick="App.applyMapEditorChanges()">Salvar & Aplicar à Mesa</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/maps.js"></script>
+  <script src="js/models3d.js"></script>
+  <script src="js/dice3d.js"></script>
+  <script src="js/multiplayer.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    function switchDrawerTab(tabId, el) {
+      ['lib-custom', 'lib-presets', 'lib-props'].forEach(id => {
+        document.getElementById(id).style.display = id === tabId ? 'flex' : 'none';
+      });
+      el.parentElement.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function joinFromLobby() {
+      const code = document.getElementById('lobby-join-code').value.trim();
+      const playerName = document.getElementById('lobby-player-name').value.trim() || 'Jogador';
+      if (!code) {
+        App.showToast('Informe o código da sala para conectar.');
+        return;
+      }
+      Multiplayer.updateProfile(playerName, null, 'player');
+      Multiplayer.joinRoom(code);
+      document.getElementById('lobby-screen').classList.add('hidden');
+    }
+
+    function handleCustomPieceFile(input) {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        App.pendingCustomImageUrl = e.target.result;
+        document.getElementById('custom-file-status').style.display = 'block';
+        const baseName = file.name.replace(/\.[^/.]+$/, '');
+        document.getElementById('custom-piece-name').value = baseName;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function changeSelectedPieceImage(input) {
+      const file = input.files?.[0];
+      if (!file || !App.selectedPieceId) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const p = App.pieces.get(App.selectedPieceId);
+        if (p) {
+          p.imageUrl = e.target.result;
+          if (p.style === 'model3d') p.style = 'standee';
+          App.addOrUpdatePiece(p, true);
+          App.populateInspectorUI();
+          App.showToast('Imagem atualizada.');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleMapUploadFile(input) {
+      const file = input.files?.[0];
+      if (!file) return;
+      const defaultName = file.name.replace(/\.[^/.]+$/, '') || 'Mapa Salvo';
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const dataUrl = e.target.result;
+        if (window.SavedMapsDB) {
+          await window.SavedMapsDB.saveMap(defaultName, dataUrl);
+          await App.renderSavedCustomMaps();
+        }
+        App.applyCustomMapImage(dataUrl, true);
+        App.showToast(`Mapa "${defaultName}" salvo e aplicado.`);
+      };
+      reader.readAsDataURL(file);
+      input.value = '';
+    }
+
+    function applyMapUrlInput() {
+      const url = document.getElementById('map-url-input').value.trim();
+      if (!url) return;
+      App.applyCustomMapImage(url, true);
+      App.showToast('Mapa aplicado.');
+    }
+
+    async function useDroppedImageAs(mode) {
+      document.getElementById('drop-image-modal').classList.remove('open');
+      const dataUrl = App.pendingDroppedImageUrl;
+      if (!dataUrl) return;
+      document.getElementById('lobby-screen').classList.add('hidden');
+      if (mode === 'map') {
+        const mapName = prompt('Nome para salvar este mapa:', 'Mapa Personalizado') || 'Mapa Personalizado';
+        if (window.SavedMapsDB) {
+          await window.SavedMapsDB.saveMap(mapName, dataUrl);
+          await App.renderSavedCustomMaps();
+        }
+        App.applyCustomMapImage(dataUrl, true);
+        App.showToast(`Mapa "${mapName}" salvo e aplicado.`);
+      } else {
+        const name = prompt('Nome da Peça:', 'Personagem') || 'Personagem';
+        const snapped = MapGenerator.snapWorldPosition(0, 0, App.mapConfig.grid, App.tableWidth, App.tableDepth);
+        const newPiece = {
+          id: 'drop_' + Date.now(),
+          name,
+          style: mode,
+          preset: 'warrior',
+          color: '#4d7c5b',
+          imageUrl: dataUrl,
+          x: snapped.x,
+          z: snapped.z,
+          rotation: 0,
+          sizeScale: 1,
+          hp: 30,
+          maxHp: 30,
+          ac: 15,
+          elevation: 0,
+          conditions: []
+        };
+        App.addOrUpdatePiece(newPiece, true);
+        App.selectPiece(newPiece.id);
+      }
+    }
+
+    function rollTableDice(sides) {
+      const count = Number(document.getElementById('dice-count-select').value) || 1;
+      const results = Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
+      const rollData = {
+        sides,
+        count,
+        results,
+        playerName: Multiplayer.myName,
+        playerColor: Multiplayer.myColor,
+        diceColor: DiceRoller3D.myDiceColor
+      };
+      DiceRoller3D.throwDice(rollData, (packet) => {
+        Multiplayer.broadcast({
+          type: 'dice_throw',
+          rollData: packet
+        });
+      });
+    }
+
+    function sendChatInput() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      const rollMatch = text.match(/^\/r(?:oll)?\s+(\d+)d(\d+)/i);
+      if (rollMatch) {
+        const count = Math.min(12, Math.max(1, Number(rollMatch[1])));
+        const sides = Number(rollMatch[2]);
+        const results = Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
+        const rollData = {
+          sides,
+          count,
+          results,
+          playerName: Multiplayer.myName,
+          playerColor: Multiplayer.myColor,
+          diceColor: DiceRoller3D.myDiceColor
+        };
+        DiceRoller3D.throwDice(rollData, (packet) => {
+          Multiplayer.broadcast({ type: 'dice_throw', rollData: packet });
+        });
+        return;
+      }
+
+      App.addChatMessage(`<strong>${App.escapeHtml(Multiplayer.myName)}:</strong> ${App.escapeHtml(text)}`);
+      Multiplayer.broadcast({
+        type: 'chat_msg',
+        text
+      });
+    }
+
+    function copyRoomCode() {
+      const code = Multiplayer.roomCode;
+      if (!code) {
+        App.showToast('Gere um código de sala primeiro.');
+        return;
+      }
+      const isOnline = window.location.protocol.startsWith('http');
+      const textToCopy = isOnline
+        ? `${window.location.origin}${window.location.pathname}?room=${code}`
+        : code;
+      navigator.clipboard?.writeText(textToCopy);
+      App.showToast(isOnline ? `Link da sala (${code}) copiado!` : `Código ${code} copiado.`);
+    }
+
+    function saveCampaignJSON() {
+      const state = App.getFullTableState();
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `willows-troop-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      App.showToast('Sessão salva.');
+    }
+
+    function loadCampaignJSONFile(input) {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const state = JSON.parse(e.target.result);
+          App.applyFullTableState(state, true);
+          document.getElementById('lobby-screen').classList.add('hidden');
+          App.showToast('Sessão carregada.');
+        } catch (err) {
+          App.showToast('Arquivo inválido.');
+        }
+      };
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>
