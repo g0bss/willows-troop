@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/styles.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
 </head>
 <body>
 
@@ -817,10 +818,13 @@
 
         <div class="section-box">
           <div class="section-title">Hospedar Sala</div>
-          <div class="room-code-box" id="modal-room-code">SESSÃO LOCAL</div>
+          <div class="room-code-box" id="modal-room-code" style="cursor:pointer; user-select:all;" onclick="copyRoomCode('code')" title="Clique para copiar o código">SESSÃO LOCAL</div>
           <div class="form-row">
             <button class="btn btn-primary" style="flex:1" onclick="Multiplayer.createRoom()">Gerar Código de Sala</button>
-            <button class="btn" onclick="copyRoomCode()">Copiar</button>
+          </div>
+          <div class="form-row">
+            <button class="btn" style="flex:1" onclick="copyRoomCode('code')">Copiar Código</button>
+            <button class="btn" style="flex:1" onclick="copyRoomCode('link')">Copiar Link Direto</button>
           </div>
         </div>
 
@@ -1077,18 +1081,49 @@
       });
     }
 
-    function copyRoomCode() {
+    function fallbackCopyText(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try {
+        ok = document.execCommand('copy');
+      } catch (e) {}
+      document.body.removeChild(ta);
+      return ok;
+    }
+
+    async function copyRoomCode(mode = 'code') {
       const code = Multiplayer.roomCode;
       if (!code) {
-        App.showToast('Gere um código de sala primeiro.');
+        App.showToast('Clique em "Gerar Código de Sala" primeiro.');
         return;
       }
-      const isOnline = window.location.protocol.startsWith('http');
-      const textToCopy = isOnline
-        ? `${window.location.origin}${window.location.pathname}?room=${code}`
-        : code;
-      navigator.clipboard?.writeText(textToCopy);
-      App.showToast(isOnline ? `Link da sala (${code}) copiado!` : `Código ${code} copiado.`);
+      const baseUrl = window.location.protocol.startsWith('http')
+        ? `${window.location.origin}${window.location.pathname}`
+        : 'https://g0bss.github.io/willows-troop/';
+      const textToCopy = mode === 'link' ? `${baseUrl}?room=${code}` : code;
+
+      let copied = fallbackCopyText(textToCopy);
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(textToCopy);
+          copied = true;
+        } catch (e) {}
+      }
+
+      if (copied) {
+        App.showToast(mode === 'link' ? `Link da sala (${code}) copiado!` : `Código ${code} copiado para a área de transferência!`);
+      } else {
+        prompt('Copie o código abaixo (Ctrl+C):', textToCopy);
+      }
     }
 
     function saveCampaignJSON() {

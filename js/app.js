@@ -754,10 +754,20 @@ window.App = {
     this.updateUI();
 
     if (broadcast) {
-      window.Multiplayer.broadcast({
-        type: 'map_config',
-        mapConfig: this.mapConfig
-      });
+      if (this.mapConfig.customImageUrl) {
+        this.compressImageForNetwork(this.mapConfig.customImageUrl, 1350, 0.75).then((compressedUrl) => {
+          const netConfig = Object.assign({}, this.mapConfig, { customImageUrl: compressedUrl });
+          window.Multiplayer.broadcast({
+            type: 'map_config',
+            mapConfig: netConfig
+          });
+        });
+      } else {
+        window.Multiplayer.broadcast({
+          type: 'map_config',
+          mapConfig: this.mapConfig
+        });
+      }
     }
   },
 
@@ -1296,10 +1306,20 @@ window.App = {
     }
 
     if (broadcast) {
-      window.Multiplayer.broadcast({
-        type: 'map_config',
-        mapConfig: this.mapConfig
-      });
+      if (this.mapConfig.customImageUrl) {
+        this.compressImageForNetwork(this.mapConfig.customImageUrl, 1350, 0.75).then((compressedUrl) => {
+          const netConfig = Object.assign({}, this.mapConfig, { customImageUrl: compressedUrl });
+          window.Multiplayer.broadcast({
+            type: 'map_config',
+            mapConfig: netConfig
+          });
+        });
+      } else {
+        window.Multiplayer.broadcast({
+          type: 'map_config',
+          mapConfig: this.mapConfig
+        });
+      }
     }
   },
 
@@ -1335,10 +1355,20 @@ window.App = {
       this.warmLight.intensity = 0.45;
     }
     if (broadcast) {
-      window.Multiplayer.broadcast({
-        type: 'map_config',
-        mapConfig: this.mapConfig
-      });
+      if (this.mapConfig.customImageUrl) {
+        this.compressImageForNetwork(this.mapConfig.customImageUrl, 1350, 0.75).then((compressedUrl) => {
+          const netConfig = Object.assign({}, this.mapConfig, { customImageUrl: compressedUrl });
+          window.Multiplayer.broadcast({
+            type: 'map_config',
+            mapConfig: netConfig
+          });
+        });
+      } else {
+        window.Multiplayer.broadcast({
+          type: 'map_config',
+          mapConfig: this.mapConfig
+        });
+      }
     }
   },
 
@@ -2163,10 +2193,20 @@ window.App = {
     this.refreshAllPieceVisibilities();
     this.updateUI();
     if (broadcast) {
-      window.Multiplayer.broadcast({
-        type: 'map_config',
-        mapConfig: this.mapConfig
-      });
+      if (this.mapConfig.customImageUrl) {
+        this.compressImageForNetwork(this.mapConfig.customImageUrl, 1350, 0.75).then((compressedUrl) => {
+          const netConfig = Object.assign({}, this.mapConfig, { customImageUrl: compressedUrl });
+          window.Multiplayer.broadcast({
+            type: 'map_config',
+            mapConfig: netConfig
+          });
+        });
+      } else {
+        window.Multiplayer.broadcast({
+          type: 'map_config',
+          mapConfig: this.mapConfig
+        });
+      }
     }
   },
 
@@ -2320,6 +2360,54 @@ window.App = {
     else p.conditions.push(cond);
     this.addOrUpdatePiece(p, true);
     this.populateInspectorUI();
+  },
+
+  compressImageForNetwork(dataUrl, maxDim = 1350, quality = 0.76) {
+    return new Promise((resolve) => {
+      if (!dataUrl || !dataUrl.startsWith('data:image') || dataUrl.length < 180000) {
+        return resolve(dataUrl);
+      }
+      const img = new Image();
+      img.onload = () => {
+        let w = img.naturalWidth || img.width || 1024;
+        let h = img.naturalHeight || img.height || 1024;
+        if (Math.max(w, h) > maxDim) {
+          const ratio = maxDim / Math.max(w, h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  },
+
+  async getNetworkSafeTableState() {
+    const clonedConfig = JSON.parse(JSON.stringify(this.mapConfig));
+    if (clonedConfig.customImageUrl) {
+      clonedConfig.customImageUrl = await this.compressImageForNetwork(clonedConfig.customImageUrl, 1350, 0.75);
+    }
+    const piecesArr = await Promise.all(
+      Array.from(this.pieces.values()).map(async (p) => {
+        const cp = Object.assign({}, p);
+        if (cp.imageUrl && cp.imageUrl.startsWith('data:image')) {
+          cp.imageUrl = await this.compressImageForNetwork(cp.imageUrl, 512, 0.78);
+        }
+        return cp;
+      })
+    );
+    return {
+      mapConfig: clonedConfig,
+      pieces: piecesArr,
+      drawDataUrl: this.drawCanvas.toDataURL(),
+      fogDataUrl: this.fogCanvas.toDataURL()
+    };
   },
 
   getFullTableState() {
