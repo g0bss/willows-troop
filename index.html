@@ -826,6 +826,11 @@
             <button class="btn" style="flex:1" onclick="copyRoomCode('code')">Copiar Código</button>
             <button class="btn" style="flex:1" onclick="copyRoomCode('link')">Copiar Link Direto</button>
           </div>
+          <div class="form-row">
+            <button class="btn" style="flex:1" onclick="Multiplayer.sendFullSyncToPlayer(null, null); App.showToast('Enviando mapa e mesa para todos na sala...');">
+              Sincronizar Mapa com Todos
+            </button>
+          </div>
         </div>
 
         <div class="section-box">

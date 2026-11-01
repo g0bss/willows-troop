@@ -283,7 +283,7 @@ window.App = {
     } else {
       this.mapConfig.transform = { zoom: 1, panX: 0, panY: 0, tableScale: 1, autoFitTable: true };
     }
-    this.applyCustomMapImage(mapItem.dataUrl, false);
+    this.applyCustomMapImage(mapItem.dataUrl, !!window.Multiplayer?.isHost);
   },
 
   async renameSavedMap(mapId, event) {
@@ -316,7 +316,7 @@ window.App = {
     document.querySelectorAll('#lobby-map-grid .map-card').forEach(c => c.classList.remove('selected'));
     if (cardEl) cardEl.classList.add('selected');
     this.mapConfig.transform = { zoom: 1.0, panX: 0.0, panY: 0.0, tableScale: 1.0, autoFitTable: true };
-    this.applyMapPreset(presetId, false);
+    this.applyMapPreset(presetId, !!window.Multiplayer?.isHost);
   },
 
   handleLobbyCustomMapUpload(input) {
@@ -340,9 +340,25 @@ window.App = {
   },
 
   enterTableFromLobby() {
+    const joinCodeVal = document.getElementById('lobby-join-code')?.value.trim();
+    const playerName = document.getElementById('lobby-player-name').value.trim() || 'Mestre';
+
+    // If user is a connected player or typed a room code to join, do NOT overwrite the GM's map!
+    if (!window.Multiplayer.isHost) {
+      window.Multiplayer.updateProfile(playerName, null, 'player');
+      document.getElementById('lobby-screen').classList.add('hidden');
+      window.Multiplayer.broadcast({ type: 'request_custom_map' });
+      return;
+    }
+    if (joinCodeVal && (!window.Multiplayer.roomCode || window.Multiplayer.normalizeRoomCode(joinCodeVal) !== window.Multiplayer.roomCode)) {
+      window.Multiplayer.updateProfile(playerName, null, 'player');
+      window.Multiplayer.joinRoom(joinCodeVal);
+      document.getElementById('lobby-screen').classList.add('hidden');
+      return;
+    }
+
     const gridType = document.getElementById('lobby-grid-type').value;
     const presetMode = document.getElementById('lobby-setup-mode').value;
-    const playerName = document.getElementById('lobby-player-name').value.trim() || 'Mestre';
 
     window.Multiplayer.updateProfile(playerName, null, null);
     document.getElementById('mp-player-name').value = playerName;
@@ -754,21 +770,60 @@ window.App = {
     this.updateUI();
 
     if (broadcast) {
-      if (this.mapConfig.customImageUrl) {
-        this.compressImageForNetwork(this.mapConfig.customImageUrl, 1350, 0.75).then((compressedUrl) => {
-          const netConfig = Object.assign({}, this.mapConfig, { customImageUrl: compressedUrl });
-          window.Multiplayer.broadcast({
-            type: 'map_config',
-            mapConfig: netConfig
-          });
-        });
-      } else {
-        window.Multiplayer.broadcast({
-          type: 'map_config',
-          mapConfig: this.mapConfig
-        });
-      }
+      this.broadcastMapSettingsOnly();
     }
+  },
+
+  getFastNetworkCustomMapJpeg() {
+    if (!this.sourceMapElement) return null;
+    try {
+      let w = this.sourceMapWidth || 1024;
+      let h = this.sourceMapHeight || 1024;
+      const maxDim = 920;
+      if (Math.max(w, h) > maxDim) {
+        const ratio = maxDim / Math.max(w, h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(this.sourceMapElement, 0, 0, w, h);
+      return c.toDataURL('image/jpeg', 0.66);
+    } catch (e) {
+      return this.mapConfig.customImageUrl;
+    }
+  },
+
+  getLightweightMapSettings() {
+    return {
+      preset: this.mapConfig.preset,
+      hasCustomImage: !!this.mapConfig.customImageUrl,
+      customMapHash: this.mapConfig.customMapHash || null,
+      lighting: this.mapConfig.lighting,
+      transform: this.mapConfig.transform,
+      grid: this.mapConfig.grid,
+      fogEnabled: this.mapConfig.fogEnabled
+    };
+  },
+
+  broadcastMapSettingsOnly() {
+    window.Multiplayer.broadcast({
+      type: 'map_settings_only',
+      settings: this.getLightweightMapSettings()
+    });
+  },
+
+  broadcastCustomMapWithImage(targetPlayerId = null) {
+    const jpegUrl = this.cachedNetMapJpeg || this.getFastNetworkCustomMapJpeg() || this.mapConfig.customImageUrl;
+    window.Multiplayer.broadcast({
+      type: 'custom_map_sync',
+      targetId: targetPlayerId || null,
+      customMapHash: this.mapConfig.customMapHash || 'custom_1',
+      customImageUrl: jpegUrl,
+      settings: this.getLightweightMapSettings()
+    });
   },
 
   initRulerVisuals() {
@@ -958,17 +1013,27 @@ window.App = {
   applyMapPreset(presetName, broadcast = true) {
     this.mapConfig.preset = presetName;
     this.mapConfig.customImageUrl = null;
+    this.mapConfig.customMapHash = null;
+    this.cachedNetMapJpeg = null;
+    this.needsCustomMapFromHost = false;
     if (!this.mapConfig.transform) {
       this.mapConfig.transform = { zoom: 1.0, panX: 0.0, panY: 0.0, tableScale: 1.0, autoFitTable: true };
     }
     this.sourceMapElement = window.MapGenerator.generatePresetMap(presetName, 2048, 2048);
     this.sourceMapWidth = 2048;
     this.sourceMapHeight = 2048;
-    this.renderMapCanvasWithTransform(broadcast);
+    this.renderMapCanvasWithTransform(false);
+    if (broadcast) {
+      this.broadcastMapSettingsOnly();
+    }
   },
 
-  applyCustomMapImage(dataUrl, broadcast = true) {
+  applyCustomMapImage(dataUrl, broadcast = true, explicitHash = null) {
+    if (!dataUrl) return;
     this.mapConfig.customImageUrl = dataUrl;
+    this.lobbyState.customMapDataUrl = dataUrl;
+    this.mapConfig.customMapHash = explicitHash || ('m_' + dataUrl.length + '_' + dataUrl.slice(-24).replace(/[^a-zA-Z0-9]/g, ''));
+    this.needsCustomMapFromHost = false;
     if (!this.mapConfig.transform) {
       this.mapConfig.transform = { zoom: 1.0, panX: 0.0, panY: 0.0, tableScale: 1.0, autoFitTable: true };
     }
@@ -978,7 +1043,11 @@ window.App = {
       this.sourceMapElement = img;
       this.sourceMapWidth = img.naturalWidth || img.width || 2048;
       this.sourceMapHeight = img.naturalHeight || img.height || 2048;
-      this.renderMapCanvasWithTransform(broadcast);
+      this.cachedNetMapJpeg = this.getFastNetworkCustomMapJpeg();
+      this.renderMapCanvasWithTransform(false);
+      if (broadcast) {
+        this.broadcastCustomMapWithImage(null);
+      }
     };
     img.src = dataUrl;
   },
@@ -1306,20 +1375,7 @@ window.App = {
     }
 
     if (broadcast) {
-      if (this.mapConfig.customImageUrl) {
-        this.compressImageForNetwork(this.mapConfig.customImageUrl, 1350, 0.75).then((compressedUrl) => {
-          const netConfig = Object.assign({}, this.mapConfig, { customImageUrl: compressedUrl });
-          window.Multiplayer.broadcast({
-            type: 'map_config',
-            mapConfig: netConfig
-          });
-        });
-      } else {
-        window.Multiplayer.broadcast({
-          type: 'map_config',
-          mapConfig: this.mapConfig
-        });
-      }
+      this.broadcastMapSettingsOnly();
     }
   },
 
@@ -1355,20 +1411,7 @@ window.App = {
       this.warmLight.intensity = 0.45;
     }
     if (broadcast) {
-      if (this.mapConfig.customImageUrl) {
-        this.compressImageForNetwork(this.mapConfig.customImageUrl, 1350, 0.75).then((compressedUrl) => {
-          const netConfig = Object.assign({}, this.mapConfig, { customImageUrl: compressedUrl });
-          window.Multiplayer.broadcast({
-            type: 'map_config',
-            mapConfig: netConfig
-          });
-        });
-      } else {
-        window.Multiplayer.broadcast({
-          type: 'map_config',
-          mapConfig: this.mapConfig
-        });
-      }
+      this.broadcastMapSettingsOnly();
     }
   },
 
@@ -2193,20 +2236,7 @@ window.App = {
     this.refreshAllPieceVisibilities();
     this.updateUI();
     if (broadcast) {
-      if (this.mapConfig.customImageUrl) {
-        this.compressImageForNetwork(this.mapConfig.customImageUrl, 1350, 0.75).then((compressedUrl) => {
-          const netConfig = Object.assign({}, this.mapConfig, { customImageUrl: compressedUrl });
-          window.Multiplayer.broadcast({
-            type: 'map_config',
-            mapConfig: netConfig
-          });
-        });
-      } else {
-        window.Multiplayer.broadcast({
-          type: 'map_config',
-          mapConfig: this.mapConfig
-        });
-      }
+      this.broadcastMapSettingsOnly();
     }
   },
 
@@ -2389,24 +2419,21 @@ window.App = {
   },
 
   async getNetworkSafeTableState() {
-    const clonedConfig = JSON.parse(JSON.stringify(this.mapConfig));
-    if (clonedConfig.customImageUrl) {
-      clonedConfig.customImageUrl = await this.compressImageForNetwork(clonedConfig.customImageUrl, 1350, 0.75);
-    }
+    // Keep full_sync lightweight (< 4KB) so it arrives in 1 single packet in < 50ms!
+    // If the GM has a custom map image, we also trigger broadcastCustomMapWithImage() right alongside it.
+    const lightSettings = this.getLightweightMapSettings();
     const piecesArr = await Promise.all(
       Array.from(this.pieces.values()).map(async (p) => {
         const cp = Object.assign({}, p);
         if (cp.imageUrl && cp.imageUrl.startsWith('data:image')) {
-          cp.imageUrl = await this.compressImageForNetwork(cp.imageUrl, 512, 0.78);
+          cp.imageUrl = await this.compressImageForNetwork(cp.imageUrl, 384, 0.72);
         }
         return cp;
       })
     );
     return {
-      mapConfig: clonedConfig,
-      pieces: piecesArr,
-      drawDataUrl: this.drawCanvas.toDataURL(),
-      fogDataUrl: this.fogCanvas.toDataURL()
+      mapSettings: lightSettings,
+      pieces: piecesArr
     };
   },
 
@@ -2419,12 +2446,50 @@ window.App = {
     };
   },
 
+  applyRemoteMapSettings(s) {
+    if (!s) return;
+    const prevPreset = this.mapConfig.preset;
+    const prevHash = this.mapConfig.customMapHash;
+
+    this.mapConfig.preset = s.preset || 'forest';
+    this.mapConfig.lighting = s.lighting || 'tavern';
+    this.mapConfig.transform = s.transform || { zoom: 1, panX: 0, panY: 0, tableScale: 1, autoFitTable: true };
+    this.mapConfig.grid = Object.assign(this.mapConfig.grid, s.grid || {});
+    this.mapConfig.fogEnabled = !!s.fogEnabled;
+
+    if (s.hasCustomImage) {
+      if (!this.mapConfig.customImageUrl || (s.customMapHash && s.customMapHash !== prevHash)) {
+        // We don't have this custom map image yet — ask Host for it immediately!
+        this.needsCustomMapFromHost = true;
+        this.expectedCustomMapHash = s.customMapHash;
+        window.Multiplayer.broadcast({ type: 'request_custom_map' });
+      } else {
+        this.renderMapCanvasWithTransform(false);
+      }
+    } else {
+      this.needsCustomMapFromHost = false;
+      if (this.mapConfig.customImageUrl || this.mapConfig.preset !== prevPreset) {
+        this.applyMapPreset(this.mapConfig.preset, false);
+      } else {
+        this.renderMapCanvasWithTransform(false);
+      }
+    }
+
+    this.applyLightingMood(this.mapConfig.lighting, false);
+    this.fogMesh.visible = !!this.mapConfig.fogEnabled;
+    this.refreshGridLayer(false);
+    this.refreshAllPieceVisibilities();
+    this.updateUI();
+  },
+
   applyFullTableState(state, broadcast = false) {
     if (!state) return;
-    if (state.mapConfig) {
+    if (state.mapSettings) {
+      this.applyRemoteMapSettings(state.mapSettings);
+    } else if (state.mapConfig) {
       this.mapConfig = state.mapConfig;
       if (this.mapConfig.customImageUrl) {
-        this.applyCustomMapImage(this.mapConfig.customImageUrl, false);
+        this.applyCustomMapImage(this.mapConfig.customImageUrl, false, this.mapConfig.customMapHash);
       } else {
         this.applyMapPreset(this.mapConfig.preset || 'forest', false);
       }
@@ -2461,10 +2526,7 @@ window.App = {
 
     this.updateUI();
     if (broadcast) {
-      window.Multiplayer.broadcast({
-        type: 'full_sync',
-        state: this.getFullTableState()
-      });
+      window.Multiplayer.sendFullSyncToPlayer(null, null);
     }
   },
 
@@ -2473,6 +2535,38 @@ window.App = {
       case 'full_sync':
         this.applyFullTableState(msg.state, false);
         document.getElementById('lobby-screen').classList.add('hidden');
+        break;
+      case 'map_settings_only':
+        if (msg.settings) {
+          this.applyRemoteMapSettings(msg.settings);
+        }
+        break;
+      case 'custom_map_sync':
+        if (msg.customImageUrl) {
+          if (msg.settings) {
+            this.mapConfig.lighting = msg.settings.lighting || 'tavern';
+            this.mapConfig.transform = msg.settings.transform || { zoom: 1, panX: 0, panY: 0, tableScale: 1, autoFitTable: true };
+            this.mapConfig.grid = Object.assign(this.mapConfig.grid, msg.settings.grid || {});
+            this.mapConfig.fogEnabled = !!msg.settings.fogEnabled;
+          }
+          this.needsCustomMapFromHost = false;
+          this.applyCustomMapImage(msg.customImageUrl, false, msg.customMapHash);
+          this.applyLightingMood(this.mapConfig.lighting, false);
+          this.fogMesh.visible = !!this.mapConfig.fogEnabled;
+          this.refreshGridLayer(false);
+          this.updateUI();
+          document.getElementById('lobby-screen').classList.add('hidden');
+          this.showToast('Mapa do Mestre sincronizado!');
+        }
+        break;
+      case 'request_custom_map':
+        if (window.Multiplayer.isHost) {
+          if (this.mapConfig.customImageUrl) {
+            this.broadcastCustomMapWithImage(msg.senderId);
+          } else {
+            this.broadcastMapSettingsOnly();
+          }
+        }
         break;
       case 'piece_drag': {
         const mesh = this.pieceMeshes.get(msg.pieceId);
@@ -2494,21 +2588,18 @@ window.App = {
         break;
       case 'map_config':
         if (msg.mapConfig) {
-          const prevPreset = this.mapConfig.preset;
-          const prevCustom = this.mapConfig.customImageUrl;
-          this.mapConfig = msg.mapConfig;
-          if (this.mapConfig.customImageUrl && this.mapConfig.customImageUrl !== prevCustom) {
-            this.applyCustomMapImage(this.mapConfig.customImageUrl, false);
-          } else if (!this.mapConfig.customImageUrl && this.mapConfig.preset !== prevPreset) {
-            this.applyMapPreset(this.mapConfig.preset, false);
-          } else {
-            this.renderMapCanvasWithTransform(false);
+          this.applyRemoteMapSettings({
+            preset: msg.mapConfig.preset,
+            hasCustomImage: !!msg.mapConfig.customImageUrl,
+            customMapHash: msg.mapConfig.customMapHash,
+            lighting: msg.mapConfig.lighting,
+            transform: msg.mapConfig.transform,
+            grid: msg.mapConfig.grid,
+            fogEnabled: msg.mapConfig.fogEnabled
+          });
+          if (msg.mapConfig.customImageUrl) {
+            this.applyCustomMapImage(msg.mapConfig.customImageUrl, false, msg.mapConfig.customMapHash);
           }
-          this.applyLightingMood(this.mapConfig.lighting || 'tavern', false);
-          this.fogMesh.visible = !!this.mapConfig.fogEnabled;
-          this.refreshGridLayer(false);
-          this.refreshAllPieceVisibilities();
-          this.updateUI();
         }
         break;
       case 'draw_stroke':

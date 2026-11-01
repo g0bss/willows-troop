@@ -340,6 +340,18 @@ window.Multiplayer = {
       document.getElementById('multiplayer-modal')?.classList.remove('open');
     }
     if (this.onStatusChange) this.onStatusChange();
+
+    // Watchdog: if the GM has a custom map and we still need it, request it automatically
+    if (this.mapSyncWatchdog) clearInterval(this.mapSyncWatchdog);
+    this.mapSyncWatchdog = setInterval(() => {
+      if (this.isHost) {
+        clearInterval(this.mapSyncWatchdog);
+        return;
+      }
+      if (window.App && window.App.needsCustomMapFromHost) {
+        this.broadcast({ type: 'request_custom_map' });
+      }
+    }, 2400);
   },
 
   async sendFullSyncToPlayer(targetPlayerId = null, directConn = null) {
@@ -359,6 +371,13 @@ window.Multiplayer = {
       this.sendPacketWithChunking(packet, directConn);
     } else {
       this.broadcast(packet);
+    }
+
+    // If Host has a custom map image on the table, also send the compressed map image right after
+    if (window.App.mapConfig && window.App.mapConfig.customImageUrl && window.App.broadcastCustomMapWithImage) {
+      setTimeout(() => {
+        window.App.broadcastCustomMapWithImage(targetPlayerId);
+      }, 150);
     }
   },
 
@@ -457,7 +476,7 @@ window.Multiplayer = {
 
   sendPacketWithChunking(packet, targetConn = null) {
     const jsonStr = JSON.stringify(packet);
-    const MAX_CHUNK = 24000; // 24KB safe limit for WebRTC & MQTT frames
+    const MAX_CHUNK = 9000; // 9KB safe limit for WebRTC & MQTT frames
 
     if (jsonStr.length <= MAX_CHUNK) {
       if (targetConn) {
@@ -471,21 +490,25 @@ window.Multiplayer = {
     const total = Math.ceil(jsonStr.length / MAX_CHUNK);
     const chunkMsgId = 'chk_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
 
+    // Send chunks paced by 28ms so neither WebRTC nor public WSS brokers drop packets
     for (let i = 0; i < total; i++) {
-      const chunkPacket = {
-        type: '_chunk',
-        senderId: this.myId,
-        targetId: packet.targetId || null,
-        chunkMsgId,
-        idx: i,
-        total,
-        chunkData: jsonStr.slice(i * MAX_CHUNK, (i + 1) * MAX_CHUNK)
-      };
-      if (targetConn) {
-        try { targetConn.send(chunkPacket); } catch (e) {}
-      } else {
-        this.rawTransportSend(chunkPacket, JSON.stringify(chunkPacket));
-      }
+      const sliceStr = jsonStr.slice(i * MAX_CHUNK, (i + 1) * MAX_CHUNK);
+      setTimeout(() => {
+        const chunkPacket = {
+          type: '_chunk',
+          senderId: this.myId,
+          targetId: packet.targetId || null,
+          chunkMsgId,
+          idx: i,
+          total,
+          chunkData: sliceStr
+        };
+        if (targetConn && targetConn.open) {
+          try { targetConn.send(chunkPacket); } catch (e) {}
+        } else {
+          this.rawTransportSend(chunkPacket, JSON.stringify(chunkPacket));
+        }
+      }, i * 28);
     }
   },
 
@@ -495,11 +518,11 @@ window.Multiplayer = {
       try { this.localChannel.postMessage(packetObj); } catch (e) {}
     }
 
-    // 2. MQTT over WSS Relay
+    // 2. MQTT over WSS Relay (QoS 1 guarantees delivery of map chunks!)
     if (this.mqttClient && this.mqttClient.connected && this.roomCode) {
       const topic = `willowstroop/v2/room/${this.roomCode}`;
       try {
-        this.mqttClient.publish(topic, jsonStr, { qos: 0 });
+        this.mqttClient.publish(topic, jsonStr, { qos: 1 });
       } catch (e) {}
     }
 
