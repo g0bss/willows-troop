@@ -69,7 +69,8 @@ window.App = {
       snap: true,
       showCoords: false
     },
-    fogEnabled: false
+    fogEnabled: false,
+    playersLocked: false
   },
 
   sourceMapElement: null,
@@ -827,6 +828,7 @@ window.App = {
       transform: this.mapConfig.transform,
       grid: this.mapConfig.grid,
       fogEnabled: this.mapConfig.fogEnabled,
+      playersLocked: !!this.mapConfig.playersLocked,
       gmCam: window.Multiplayer?.isHost ? this.getSerializedCamState() : this.hostCamState
     };
   },
@@ -1562,8 +1564,40 @@ window.App = {
     }
   },
 
+  isPlayerActionBlocked(showWarning = true) {
+    if (window.Multiplayer && !window.Multiplayer.isHost && this.mapConfig.playersLocked) {
+      if (showWarning) {
+        this.showToast('O Mestre bloqueou interações (criação de peças e dados) no momento.');
+      }
+      return true;
+    }
+    return false;
+  },
+
+  togglePlayersLock() {
+    if (window.Multiplayer && !window.Multiplayer.isHost) {
+      this.showToast('Apenas o Mestre da sala pode bloquear ou liberar ações dos jogadores.');
+      return;
+    }
+    this.mapConfig.playersLocked = !this.mapConfig.playersLocked;
+    this.refreshAllPieceVisibilities();
+    this.broadcastMapSettingsOnly();
+    window.Multiplayer.broadcast({
+      type: 'player_lock_toggle',
+      locked: this.mapConfig.playersLocked
+    });
+    this.showToast(
+      this.mapConfig.playersLocked
+        ? 'Ações dos jogadores BLOQUEADAS (não podem criar modelos, mover peças ou jogar dados).'
+        : 'Ações dos jogadores LIBERADAS!'
+    );
+  },
+
   refreshAllPieceVisibilities() {
     const isGM = window.Multiplayer.myRole === 'gm';
+    const isHost = !!window.Multiplayer.isHost;
+    const isLockedForMe = !isHost && !!this.mapConfig.playersLocked;
+
     const roleSelect = document.getElementById('role-select');
     if (roleSelect && roleSelect.value !== window.Multiplayer.myRole) {
       roleSelect.value = window.Multiplayer.myRole;
@@ -1574,12 +1608,41 @@ window.App = {
     const btnFogTool = document.getElementById('btn-tool-fog');
     const btnMapGrid = document.getElementById('btn-dock-mapgrid');
     const btnSyncCam = document.getElementById('btn-sync-gm-cam');
+    const btnLockPlayers = document.getElementById('btn-lock-players');
+    const lockedBadge = document.getElementById('player-locked-badge');
+    const btnLibrary = document.getElementById('btn-dock-library');
+    const diceDock = document.getElementById('dice-dock');
 
-    if (btnLobby) btnLobby.style.display = isGM ? '' : 'none';
-    if (btnFogTool) btnFogTool.style.display = isGM ? '' : 'none';
-    if (btnMapGrid) btnMapGrid.style.display = isGM ? '' : 'none';
+    if (btnLobby) btnLobby.style.display = (isGM && isHost) ? '' : 'none';
+    if (btnFogTool) btnFogTool.style.display = (isGM && isHost) ? '' : 'none';
+    if (btnMapGrid) btnMapGrid.style.display = (isGM && isHost) ? '' : 'none';
 
-    if (!isGM) {
+    if (btnLockPlayers) {
+      btnLockPlayers.style.display = isHost ? '' : 'none';
+      btnLockPlayers.classList.toggle('active', !!this.mapConfig.playersLocked);
+      btnLockPlayers.style.color = this.mapConfig.playersLocked ? '#f87171' : '';
+      btnLockPlayers.style.borderColor = this.mapConfig.playersLocked ? 'rgba(248,113,113,0.55)' : '';
+    }
+
+    if (lockedBadge) {
+      lockedBadge.style.display = isLockedForMe ? 'inline-block' : 'none';
+    }
+    if (btnLibrary) {
+      btnLibrary.style.display = isLockedForMe ? 'none' : '';
+    }
+    if (diceDock) {
+      diceDock.style.display = isLockedForMe ? 'none' : '';
+    }
+
+    if (isLockedForMe) {
+      document.getElementById('library-drawer')?.classList.add('closed');
+      document.getElementById('inspector-drawer')?.classList.add('closed');
+      if (this.activeTool === 'draw' || this.activeTool === 'pin') {
+        this.setTool('grab');
+      }
+    }
+
+    if (!isGM || !isHost) {
       document.getElementById('mapgrid-drawer')?.classList.add('closed');
       if (this.activeTool === 'fog') {
         this.setTool('grab');
@@ -1882,6 +1945,7 @@ window.App = {
       }
 
       if (this.activeTool === 'pin') {
+        if (this.isPlayerActionBlocked(true)) return;
         const pinLabel = prompt('Nome do Marcador:', 'Ponto de Interesse');
         if (pinLabel) {
           const snapped = window.MapGenerator.snapWorldPosition(pt.x, pt.z, this.mapConfig.grid, this.tableWidth, this.tableDepth);
@@ -1913,6 +1977,7 @@ window.App = {
       }
 
       if (this.activeTool === 'draw') {
+        if (this.isPlayerActionBlocked(true)) return;
         const uv = this.worldToUV(pt.x, pt.z);
         this.drawConfig.isDrawing = true;
         this.drawConfig.startUV = uv;
@@ -1924,6 +1989,7 @@ window.App = {
       }
 
       if (this.activeTool === 'fog') {
+        if (!window.Multiplayer.isHost) return;
         if (!this.mapConfig.fogEnabled) {
           this.toggleFogOfWar(true);
         }
@@ -1936,6 +2002,7 @@ window.App = {
       // First check if user clicked on a 3D Die on the table!
       const hitDieId = this.pickDieAtMouse(e.clientX, e.clientY);
       if (hitDieId) {
+        if (this.isPlayerActionBlocked(true)) return;
         this.selectedDieId = hitDieId;
         this.selectPiece(null);
         const dieObj = window.DiceRoller3D.activeDice.find(d => d.id === hitDieId);
@@ -1952,6 +2019,7 @@ window.App = {
       this.selectedDieId = null;
       const hitPieceId = this.pickPieceAtMouse(e.clientX, e.clientY);
       if (hitPieceId) {
+        if (this.isPlayerActionBlocked(true)) return;
         this.selectPiece(hitPieceId);
         const piece = this.pieces.get(hitPieceId);
         if (piece && !piece.locked) {
@@ -2221,15 +2289,18 @@ window.App = {
         this.camState.target.set(0, 0, 0);
         this.updateCameraTransform();
       } else if (activeDieId && (e.key === 'Delete' || e.key === 'Backspace')) {
+        if (this.isPlayerActionBlocked(true)) return;
         window.DiceRoller3D.removeDie(activeDieId, true);
         this.selectedDieId = null;
         this.hoveredDieId = null;
       } else if (activeDieId && e.key.toLowerCase() === 'r') {
+        if (this.isPlayerActionBlocked(true)) return;
         const dieObj = window.DiceRoller3D.activeDice.find(d => d.id === activeDieId);
         if (dieObj) {
           window.DiceRoller3D.tossSingleDie(activeDieId, dieObj.mesh.position.x, dieObj.mesh.position.z, 0, 0);
         }
       } else if (activePiece) {
+        if (this.isPlayerActionBlocked(true)) return;
         if (e.key.toLowerCase() === 'q') {
           activePiece.rotation = (activePiece.rotation || 0) - Math.PI / 4;
           this.addOrUpdatePiece(activePiece, true);
@@ -2403,6 +2474,7 @@ window.App = {
   },
 
   spawnPresetPiece(category, preset, name, defaultColor, sizeScale = 1) {
+    if (this.isPlayerActionBlocked(true)) return;
     const style = category === 'prop' ? 'prop' : (category === 'pin' ? 'pin' : document.getElementById('spawn-style-select')?.value || 'standee');
     const rx = (Math.random() - 0.5) * 6;
     const rz = (Math.random() - 0.5) * 6;
@@ -2438,6 +2510,7 @@ window.App = {
   },
 
   spawnCustomImagePiece() {
+    if (this.isPlayerActionBlocked(true)) return;
     const name = document.getElementById('custom-piece-name').value.trim() || 'Personagem';
     const style = document.getElementById('custom-piece-style').value || 'standee';
     const color = document.getElementById('custom-piece-color').value || '#4d7c5b';
@@ -2477,6 +2550,7 @@ window.App = {
   },
 
   duplicateSelectedPiece() {
+    if (this.isPlayerActionBlocked(true)) return;
     if (!this.selectedPieceId) return;
     const orig = this.pieces.get(this.selectedPieceId);
     if (!orig) return;
@@ -2620,6 +2694,9 @@ window.App = {
     this.mapConfig.transform = s.transform || { zoom: 1, panX: 0, panY: 0, tableScale: 1, autoFitTable: true };
     this.mapConfig.grid = Object.assign(this.mapConfig.grid, s.grid || {});
     this.mapConfig.fogEnabled = !!s.fogEnabled;
+    if (typeof s.playersLocked === 'boolean') {
+      this.mapConfig.playersLocked = s.playersLocked;
+    }
 
     if (s.gmCam && !window.Multiplayer.isHost) {
       this.applyHostCamState(s.gmCam, !!this.camState.followGmCamera);
@@ -2699,7 +2776,26 @@ window.App = {
   },
 
   onNetworkMessage(msg) {
+    // Enforce GM player lock on Host side as well
+    if (window.Multiplayer.isHost && this.mapConfig.playersLocked && msg.senderId && msg.senderId !== window.Multiplayer.myId) {
+      const blockedTypes = ['piece_drag', 'piece_update', 'piece_delete', 'draw_stroke', 'draw_clear', 'dice_throw', 'dice_clear'];
+      if (blockedTypes.includes(msg.type)) {
+        return;
+      }
+    }
+
     switch (msg.type) {
+      case 'player_lock_toggle':
+        this.mapConfig.playersLocked = !!msg.locked;
+        this.refreshAllPieceVisibilities();
+        if (!window.Multiplayer.isHost) {
+          this.showToast(
+            msg.locked
+              ? 'O Mestre bloqueou a criação de modelos e rolagens de dados.'
+              : 'O Mestre liberou as ações na mesa!'
+          );
+        }
+        break;
       case 'full_sync':
         this.applyFullTableState(msg.state, false);
         document.getElementById('lobby-screen').classList.add('hidden');

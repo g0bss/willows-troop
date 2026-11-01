@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Willow's Troop</title>
   <link rel="icon" type="image/jpeg" href="assets/frog-druid-logo.jpg" />
-  <link rel="stylesheet" href="css/styles.css?v=3.4" />
+  <link rel="stylesheet" href="css/styles.css?v=3.5" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
@@ -213,6 +213,10 @@
       <button class="icon-btn" id="btn-toggle-labels" onclick="App.showAllLabels = !App.showAllLabels; this.classList.toggle('active', App.showAllLabels);" title="Mostrar/Ocultar Todos os Nomes">
         <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
       </button>
+      <button class="icon-btn" id="btn-lock-players" onclick="App.togglePlayersLock()" title="Bloquear / Liberar Ações dos Jogadores (Criar Peças, Rolar Dados, Mover ou Desenhar)">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </button>
+      <span id="player-locked-badge" style="display:none; font-size:11px; font-weight:600; color:#f87171; padding:0 6px; white-space:nowrap;">Mesa Bloqueada pelo Mestre</span>
     </div>
   </div>
 
@@ -918,11 +922,11 @@
     </div>
   </div>
 
-  <script src="js/maps.js?v=3.4"></script>
-  <script src="js/models3d.js?v=3.4"></script>
-  <script src="js/dice3d.js?v=3.4"></script>
-  <script src="js/multiplayer.js?v=3.4"></script>
-  <script src="js/app.js?v=3.4"></script>
+  <script src="js/maps.js?v=3.5"></script>
+  <script src="js/models3d.js?v=3.5"></script>
+  <script src="js/dice3d.js?v=3.5"></script>
+  <script src="js/multiplayer.js?v=3.5"></script>
+  <script src="js/app.js?v=3.5"></script>
 
   <script>
     function switchDrawerTab(tabId, el) {
@@ -1002,6 +1006,7 @@
 
     async function useDroppedImageAs(mode) {
       document.getElementById('drop-image-modal').classList.remove('open');
+      if (App.isPlayerActionBlocked && App.isPlayerActionBlocked(true)) return;
       const dataUrl = App.pendingDroppedImageUrl;
       if (!dataUrl) return;
       document.getElementById('lobby-screen').classList.add('hidden');
@@ -1039,6 +1044,7 @@
     }
 
     function rollTableDice(sides) {
+      if (App.isPlayerActionBlocked && App.isPlayerActionBlocked(true)) return;
       const count = Number(document.getElementById('dice-count-select').value) || 1;
       const results = Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
       const rollData = {
@@ -1065,6 +1071,7 @@
 
       const rollMatch = text.match(/^\/r(?:oll)?\s+(\d+)d(\d+)/i);
       if (rollMatch) {
+        if (App.isPlayerActionBlocked && App.isPlayerActionBlocked(true)) return;
         const count = Math.min(12, Math.max(1, Number(rollMatch[1])));
         const sides = Number(rollMatch[2]);
         const results = Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
