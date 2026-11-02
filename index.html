@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Willow's Troop</title>
   <link rel="icon" type="image/jpeg" href="assets/frog-druid-logo.jpg" />
-  <link rel="stylesheet" href="css/styles.css?v=4.0" />
+  <link rel="stylesheet" href="css/styles.css?v=4.2" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
@@ -165,9 +165,22 @@
 
           <div class="lobby-option-item">
             <label>Peças Iniciais na Mesa</label>
-            <select id="lobby-setup-mode" style="width: 210px;">
+            <select id="lobby-setup-mode" style="width: 195px;">
               <option value="empty">Mesa Limpa (Sem miniaturas)</option>
               <option value="party">Com Grupo (Willow's Troop)</option>
+            </select>
+          </div>
+
+          <div class="lobby-option-item">
+            <label>Cenário de Fundo 360°</label>
+            <select id="lobby-skybox-select" style="width: 195px;" onchange="Effects3D.setSkybox(this.value, '', true)">
+              <option value="tavern">Taverna Medieval (360°)</option>
+              <option value="fireplace">Cabana & Lareira (360°)</option>
+              <option value="forest">Floresta & Neblina (360°)</option>
+              <option value="gothic">Catedral Gótica (360°)</option>
+              <option value="sunset">Montanhas ao Pôr do Sol</option>
+              <option value="night">Colinas sob o Luar (360°)</option>
+              <option value="void">Estúdio Escuro (Padrão)</option>
             </select>
           </div>
         </div>
@@ -216,6 +229,9 @@
       <button class="icon-btn" id="btn-toggle-combat" onclick="CombatTracker.toggleOpen()" title="Ordem de Iniciativa & Combate">
         <svg viewBox="0 0 24 24"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M14.5 6.5L18 3h3v3l-3.5 3.5"/><path d="M5 19l4-4"/></svg>
       </button>
+      <button class="icon-btn" id="btn-open-handout" onclick="document.getElementById('handout-modal').classList.add('open')" title="Mostrar Ilustração / Pista na Tela de Todos">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </button>
       <button class="icon-btn" id="btn-toggle-labels" onclick="App.showAllLabels = !App.showAllLabels; this.classList.toggle('active', App.showAllLabels);" title="Mostrar/Ocultar Todos os Nomes">
         <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
       </button>
@@ -253,19 +269,24 @@
     </div>
   </div>
 
-  <!-- TOP-CENTER RETRACTABLE COMBAT & INITIATIVE TRACKER -->
+  <!-- TOP-CENTER RETRACTABLE COMBAT & INITIATIVE TRACKER (Manual Name + Initiative Entry) -->
   <div id="turn-tracker-container">
     <div class="turn-tracker-bar">
       <div class="turn-tracker-header">
         <span id="turn-tracker-round" class="round-badge">Rodada 1</span>
-        <button class="btn btn-sm" onclick="CombatTracker.pullPiecesFromTable(true)" title="Importar miniaturas da mesa">Puxar da Mesa</button>
-        <button class="btn btn-sm" onclick="CombatTracker.rollAllInitiative()" title="Rolar iniciativa d20 para todos">Rolar Iniciativas</button>
+        <input type="text" id="combat-add-name" placeholder="Nome (ex: Goblin, Willow)" style="width:155px; height:28px; font-size:12px;"
+          onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" />
+        <input type="number" id="combat-add-init" placeholder="Inic." value="15" style="width:58px; height:28px; font-size:12px; text-align:center;"
+          title="Valor da Iniciativa" onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" />
+        <button class="btn btn-primary btn-sm" onclick="CombatTracker.addManualCombatant()" title="Adicionar à Ordem de Iniciativa">+ Adicionar</button>
+        <button class="btn btn-sm" onclick="CombatTracker.pullPiecesFromTable(true)" title="Importar peças da mesa">Da Mesa</button>
+        <button class="btn btn-danger btn-sm" onclick="CombatTracker.clearCombatants()" title="Limpar lista de iniciativa">Limpar</button>
       </div>
 
       <div class="turn-tracker-nav">
         <button class="icon-btn-sm" onclick="CombatTracker.prevTurn()" title="Turno Anterior">◀</button>
         <div id="turn-tracker-list" class="turn-tracker-cards"></div>
-        <button class="btn btn-primary btn-sm" onclick="CombatTracker.nextTurn()" title="Próximo Turno (ou Espaço)">Próximo ▶</button>
+        <button class="btn btn-primary btn-sm" onclick="CombatTracker.nextTurn()" title="Próximo Turno">Próximo ▶</button>
       </div>
 
       <button class="turn-tracker-close" onclick="CombatTracker.toggleOpen()" title="Fechar rastreador">✕</button>
@@ -336,18 +357,37 @@
       <button class="btn" onclick="App.fillFogCanvas(false); Multiplayer.broadcast({type:'fog_reset', coverAll:false});">Revelar Tudo</button>
     </div>
 
-    <div id="sub-aoe-controls" style="display:none; align-items:center; gap:8px;">
-      <span>Molde:</span>
-      <select id="aoe-type-select" style="width:115px" onchange="Effects3D.setAoETemplate(this.value, document.getElementById('aoe-radius-range').value, document.getElementById('aoe-color-picker').value, true)">
-        <option value="circle">Esfera / Raio</option>
+    <div id="sub-laser-controls" style="display:none; align-items:center; gap:8px;">
+      <span>Cor do Laser:</span>
+      <input type="color" id="laser-color-picker" value="#b91c1c"
+        oninput="Effects3D.setLaserColor(this.value)"
+        onchange="Effects3D.setLaserColor(this.value)" />
+      <button class="btn btn-sm" onclick="Effects3D.setLaserColor(DiceRoller3D.myDiceColor)">Usar Cor do Dado</button>
+      <span style="font-size:11px; color:var(--text-secondary);">Dica: Segure <strong style="color:var(--accent-gold);">X</strong> em qualquer ferramenta para apontar</span>
+    </div>
+
+    <div id="sub-aoe-controls" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
+      <span>Formato:</span>
+      <select id="aoe-type-select" style="width:128px" onchange="Effects3D.setAoETemplate(this.value, document.getElementById('aoe-radius-range').value, document.getElementById('aoe-color-picker').value, true)">
+        <option value="circle">Esfera / Círculo</option>
         <option value="cone">Cone (60°)</option>
         <option value="line">Linha / Raio</option>
+        <option value="cube">Cubo / Quadrado</option>
       </select>
-      <label style="font-size:11.5px;">Raio: <strong id="aoe-radius-val">6m</strong></label>
-      <input type="range" id="aoe-radius-range" min="1.5" max="18" step="1.5" value="6" style="width:80px"
+      <label style="font-size:11.5px;">Área: <strong id="aoe-radius-val">6m</strong></label>
+      <button class="btn btn-sm" style="padding:2px 7px;" onclick="Effects3D.adjustAoERadius(-1.5, true)" title="Diminuir Área (-1.5m)">-</button>
+      <input type="range" id="aoe-radius-range" min="1.5" max="30" step="0.5" value="6" style="width:95px"
         oninput="document.getElementById('aoe-radius-val').textContent = this.value + 'm'; Effects3D.setAoETemplate(document.getElementById('aoe-type-select').value, this.value, document.getElementById('aoe-color-picker').value, true);" />
-      <input type="color" id="aoe-color-picker" value="#ea580c" onchange="Effects3D.setAoETemplate(document.getElementById('aoe-type-select').value, document.getElementById('aoe-radius-range').value, this.value, true)" />
-      <button class="btn btn-danger btn-sm" onclick="Effects3D.clearAoETemplate(true)">Remover</button>
+      <button class="btn btn-sm" style="padding:2px 7px;" onclick="Effects3D.adjustAoERadius(1.5, true)" title="Aumentar Área (+1.5m)">+</button>
+      <label style="font-size:11.5px;">Giro: <strong id="aoe-rot-val">0°</strong></label>
+      <input type="range" id="aoe-rot-range" min="0" max="360" step="15" value="0" style="width:70px"
+        oninput="document.getElementById('aoe-rot-val').textContent = this.value + '°'; Effects3D.setAoETemplate(null, null, null, true, Number(this.value));" />
+      <input type="color" id="aoe-color-picker" value="#ea580c"
+        oninput="Effects3D.setAoETemplate(document.getElementById('aoe-type-select').value, document.getElementById('aoe-radius-range').value, this.value, true)"
+        onchange="Effects3D.setAoETemplate(document.getElementById('aoe-type-select').value, document.getElementById('aoe-radius-range').value, this.value, true)" />
+      <span style="font-size:11px; color:var(--accent-gold); font-weight:600;">Clique no mapa para fixar!</span>
+      <button class="btn btn-sm" onclick="Effects3D.removePinnedAoE(null, true)" title="Remover a área selecionada ou última fixada (Del)">Remover Última</button>
+      <button class="btn btn-danger btn-sm" onclick="Effects3D.clearAoETemplate(true)">Limpar Todas</button>
     </div>
   </div>
 
@@ -668,7 +708,28 @@
       </div>
 
       <div class="section-box">
-        <div class="section-title">Ambiente, Clima & Névoa</div>
+        <div class="section-title">Cenário 360°, Iluminação & Clima</div>
+        <div class="form-row">
+          <label>Cenário de Fundo:</label>
+          <select id="skybox-select" style="width:165px" onchange="Effects3D.setSkybox(this.value, '', true)">
+            <option value="tavern">Taverna Medieval (360°)</option>
+            <option value="fireplace">Cabana & Lareira (360°)</option>
+            <option value="forest">Floresta & Neblina (360°)</option>
+            <option value="gothic">Catedral Gótica (360°)</option>
+            <option value="sunset">Montanhas Pôr do Sol</option>
+            <option value="night">Colinas sob o Luar</option>
+            <option value="custom">Imagem da Internet / PC</option>
+            <option value="void">Estúdio Escuro (Preto)</option>
+          </select>
+        </div>
+        <div id="skybox-custom-row" class="form-col" style="display:none; gap:6px;">
+          <div class="form-row">
+            <input type="text" id="skybox-custom-url" placeholder="Cole URL de imagem panorâmica..." />
+            <button class="btn btn-sm" onclick="Effects3D.setSkybox('custom', document.getElementById('skybox-custom-url').value.trim(), true)">Aplicar</button>
+          </div>
+          <button class="btn btn-sm" onclick="document.getElementById('skybox-upload-input').click()">Enviar Imagem de Fundo do PC...</button>
+          <input type="file" id="skybox-upload-input" accept="image/*" style="display:none" onchange="handleSkyboxUploadFile(this)" />
+        </div>
         <div class="form-row">
           <label>Iluminação:</label>
           <select id="lighting-select" style="width:155px" onchange="App.applyLightingMood(this.value, true)">
@@ -922,6 +983,59 @@
         <button class="btn" style="padding:10px;" onclick="useDroppedImageAs('map')">
           Definir como Mapa do Tabuleiro
         </button>
+        <button class="btn" style="padding:10px;" onclick="useDroppedImageAs('handout')">
+          Mostrar na Tela de Todos (Pista / Ilustração)
+        </button>
+        <button class="btn" style="padding:10px;" onclick="useDroppedImageAs('skybox')">
+          Definir como Cenário de Fundo 360°
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: GM HANDOUT CREATOR ("Mostrar Imagem / Pista para Todos") -->
+  <div id="handout-modal" class="modal-backdrop">
+    <div class="modal-card" style="width:420px;">
+      <div class="drawer-header">
+        <h3>Exibir Ilustração / Pista para o Grupo</h3>
+        <button class="btn" style="padding:2px 7px" onclick="document.getElementById('handout-modal').classList.remove('open')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-box">
+          <div class="form-col">
+            <label>Título da Pista / Personagem / Local:</label>
+            <input type="text" id="handout-title-input" placeholder="Ex: Carta Antiga, Dragão Ancião..." value="Ilustração da Sessão" />
+          </div>
+          <div class="form-col">
+            <label>Link de Imagem da Internet:</label>
+            <input type="text" id="handout-url-input" placeholder="Cole o link (https://...) de uma imagem..." />
+          </div>
+          <div class="form-col">
+            <label>Ou Escolha um Arquivo do Computador:</label>
+            <button class="btn" onclick="document.getElementById('handout-file-input').click()">Selecionar Imagem do PC...</button>
+            <input type="file" id="handout-file-input" accept="image/*" style="display:none" onchange="handleHandoutFileSelect(this)" />
+            <span id="handout-file-status" style="font-size:11px; color:var(--accent-moss-bright); display:none;">Arquivo carregado e pronto para exibir!</span>
+          </div>
+          <button class="btn btn-primary" style="width:100%; padding:10px; font-weight:600;" onclick="triggerHandoutShow()">
+            Exibir na Tela de Todos Agora
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: FULL-SCREEN HANDOUT VIEWER OVERLAY -->
+  <div id="handout-viewer-modal" class="modal-backdrop" onclick="if(event.target===this) this.classList.remove('open')">
+    <div class="modal-card" style="width:auto; max-width:88vw; max-height:90vh; background:rgba(12,15,20,0.96); border:1px solid var(--accent-gold);">
+      <div class="drawer-header" style="gap:16px;">
+        <h3 id="handout-viewer-title" style="color:var(--accent-gold);">Ilustração da Sessão</h3>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-sm" onclick="App.closeHandoutForAll()">Fechar para Todos</button>
+          <button class="btn btn-sm" onclick="document.getElementById('handout-viewer-modal').classList.remove('open')">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" style="align-items:center; justify-content:center; padding:12px; overflow:auto;">
+        <img id="handout-viewer-img" src="" alt="Ilustração" style="max-width:82vw; max-height:76vh; object-fit:contain; border-radius:6px; box-shadow:0 12px 40px rgba(0,0,0,0.75);" />
       </div>
     </div>
   </div>
@@ -976,14 +1090,14 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=4.0"></script>
-  <script src="js/effects.js?v=4.0"></script>
-  <script src="js/combat.js?v=4.0"></script>
-  <script src="js/maps.js?v=4.0"></script>
-  <script src="js/models3d.js?v=4.0"></script>
-  <script src="js/dice3d.js?v=4.0"></script>
-  <script src="js/multiplayer.js?v=4.0"></script>
-  <script src="js/app.js?v=4.0"></script>
+  <script src="js/audio.js?v=4.2"></script>
+  <script src="js/effects.js?v=4.2"></script>
+  <script src="js/combat.js?v=4.2"></script>
+  <script src="js/maps.js?v=4.2"></script>
+  <script src="js/models3d.js?v=4.2"></script>
+  <script src="js/dice3d.js?v=4.2"></script>
+  <script src="js/multiplayer.js?v=4.2"></script>
+  <script src="js/app.js?v=4.2"></script>
 
   <script>
     function switchDrawerTab(tabId, el) {
@@ -1061,12 +1175,63 @@
       App.showToast('Mapa aplicado.');
     }
 
+    function handleSkyboxUploadFile(input) {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        Effects3D.setSkybox('custom', e.target.result, true);
+        App.showToast('Cenário 360° personalizado aplicado!');
+      };
+      reader.readAsDataURL(file);
+      input.value = '';
+    }
+
+    let pendingHandoutDataUrl = null;
+    function handleHandoutFileSelect(input) {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        pendingHandoutDataUrl = e.target.result;
+        document.getElementById('handout-file-status').style.display = 'block';
+        const baseName = file.name.replace(/\.[^/.]+$/, '');
+        const titleEl = document.getElementById('handout-title-input');
+        if (titleEl && (!titleEl.value || titleEl.value === 'Ilustração da Sessão')) {
+          titleEl.value = baseName;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function triggerHandoutShow() {
+      const title = document.getElementById('handout-title-input')?.value.trim() || 'Ilustração da Sessão';
+      const urlInput = document.getElementById('handout-url-input')?.value.trim();
+      const finalImg = urlInput || pendingHandoutDataUrl;
+      if (!finalImg) {
+        App.showToast('Selecione uma imagem do PC ou cole um link primeiro.');
+        return;
+      }
+      document.getElementById('handout-modal')?.classList.remove('open');
+      App.sendHandoutToAll(finalImg, title);
+    }
+
     async function useDroppedImageAs(mode) {
       document.getElementById('drop-image-modal').classList.remove('open');
       if (App.isPlayerActionBlocked && App.isPlayerActionBlocked(true)) return;
       const dataUrl = App.pendingDroppedImageUrl;
       if (!dataUrl) return;
       document.getElementById('lobby-screen').classList.add('hidden');
+      if (mode === 'handout') {
+        const title = prompt('Título da Ilustração / Pista:', App.pendingDroppedFileName || 'Ilustração da Sessão') || 'Ilustração da Sessão';
+        App.sendHandoutToAll(dataUrl, title);
+        return;
+      }
+      if (mode === 'skybox') {
+        Effects3D.setSkybox('custom', dataUrl, true);
+        App.showToast('Cenário de fundo 360° atualizado!');
+        return;
+      }
       if (mode === 'map') {
         const mapName = prompt('Nome para salvar este mapa:', 'Mapa Personalizado') || 'Mapa Personalizado';
         if (window.SavedMapsDB) {

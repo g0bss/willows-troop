@@ -25,6 +25,9 @@ window.DiceRoller3D = {
     try {
       localStorage.setItem('willow_dice_color', hexColor);
     } catch (e) {}
+    if (window.Effects3D && window.Effects3D.setLaserColor) {
+      window.Effects3D.setLaserColor(hexColor);
+    }
   },
 
   // Creates an authentic 10-sided Pentagonal Trapezohedron geometry (for d10 and d100)

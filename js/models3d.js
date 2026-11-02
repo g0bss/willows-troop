@@ -352,6 +352,36 @@ window.Models3D = {
     selRing.name = 'selectionRing';
     root.add(selRing);
 
+    // 3D Condition Rings (Poisoned, Burning, Stunned, Blessed)
+    const conds = Array.isArray(pieceData.conditions) ? pieceData.conditions : [];
+    const condColors = {
+      poisoned: 0x22c55e,
+      burning: 0xf97316,
+      stunned: 0xeab308,
+      blessed: 0x38bdf8
+    };
+    let condIdx = 0;
+    ['poisoned', 'burning', 'stunned', 'blessed'].forEach(cKey => {
+      if (conds.includes(cKey)) {
+        const rInner = baseRadius * (1.16 + condIdx * 0.12);
+        const rOuter = rInner + 0.09;
+        const cGeo = new THREE.RingGeometry(rInner, rOuter, 36);
+        cGeo.rotateX(-Math.PI / 2);
+        const cMat = new THREE.MeshBasicMaterial({
+          color: condColors[cKey],
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.85,
+          depthWrite: false
+        });
+        const cMesh = new THREE.Mesh(cGeo, cMat);
+        cMesh.position.y = 0.045 + condIdx * 0.005;
+        cMesh.name = 'condRing_' + cKey;
+        root.add(cMesh);
+        condIdx++;
+      }
+    });
+
     // Flight stand if elevated
     if (elevationUnits > 0.05) {
       const standBaseGeo = new THREE.CylinderGeometry(baseRadius * 0.65, baseRadius * 0.72, 0.08, 24);
@@ -711,11 +741,63 @@ window.Models3D = {
     parent.add(head);
   },
 
+  getProceduralMaterial(type) {
+    const key = `proc_mat_${type}`;
+    if (this.textureCache[key]) return this.textureCache[key];
+
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 256;
+    const ctx = c.getContext('2d');
+
+    if (type === 'wood') {
+      ctx.fillStyle = '#5c341d';
+      ctx.fillRect(0, 0, 256, 256);
+      for (let i = 0; i < 90; i++) {
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(30, 14, 6, 0.22)' : 'rgba(130, 82, 45, 0.16)';
+        ctx.fillRect(0, (i * 3) % 256, 256, 2 + (i % 3));
+      }
+    } else if (type === 'stone') {
+      ctx.fillStyle = '#5b6675';
+      ctx.fillRect(0, 0, 256, 256);
+      ctx.strokeStyle = 'rgba(22, 27, 34, 0.55)';
+      ctx.lineWidth = 3;
+      const rows = 4;
+      const rowH = 256 / rows;
+      for (let r = 0; r < rows; r++) {
+        const y = r * rowH;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(256, y);
+        ctx.stroke();
+        const offset = (r % 2) * 32;
+        for (let x = offset; x < 256; x += 64) {
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x, y + rowH);
+          ctx.stroke();
+        }
+      }
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex,
+      roughness: type === 'wood' ? 0.68 : 0.82,
+      metalness: 0.08
+    });
+    this.textureCache[key] = mat;
+    return mat;
+  },
+
   buildPropMesh(parent, pieceData, size) {
     const preset = pieceData.preset || 'chest';
-    const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b3e26, roughness: 0.75 });
-    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.85 });
-    const goldMat = new THREE.MeshStandardMaterial({ color: 0xc8a96e, roughness: 0.3, metalness: 0.8 });
+    const woodMat = this.getProceduralMaterial('wood');
+    const stoneMat = this.getProceduralMaterial('stone');
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xc8a96e, roughness: 0.28, metalness: 0.82 });
 
     if (preset === 'wall') {
       const wall = new THREE.Mesh(new THREE.BoxGeometry(size * 0.98, size * 1.15, size * 0.32), stoneMat);

@@ -529,14 +529,15 @@ window.App = {
     this.sourceMapWidth = 2048;
     this.sourceMapHeight = 2048;
 
+    const maxAniso = this.renderer?.capabilities?.getMaxAnisotropy ? this.renderer.capabilities.getMaxAnisotropy() : 8;
     this.mapTexture = new THREE.CanvasTexture(this.mapCanvas);
-    this.mapTexture.anisotropy = 4;
+    this.mapTexture.anisotropy = Math.min(16, maxAniso);
 
     const mapGeo = new THREE.PlaneGeometry(w, d);
     mapGeo.rotateX(-Math.PI / 2);
     this.mapMat = new THREE.MeshStandardMaterial({
       map: this.mapTexture,
-      roughness: 0.8,
+      roughness: 0.72,
       metalness: 0.04
     });
     this.mapMesh = new THREE.Mesh(mapGeo, this.mapMat);
@@ -548,7 +549,7 @@ window.App = {
     this.gridCanvas.width = 2048;
     this.gridCanvas.height = 2048;
     this.gridTexture = new THREE.CanvasTexture(this.gridCanvas);
-    this.gridTexture.anisotropy = 4;
+    this.gridTexture.anisotropy = Math.min(16, maxAniso);
 
     const gridGeo = new THREE.PlaneGeometry(w, d);
     gridGeo.rotateX(-Math.PI / 2);
@@ -602,6 +603,74 @@ window.App = {
     this.refreshGridLayer(false);
   },
 
+  getTableMaterials() {
+    if (this._cachedTableMats) return this._cachedTableMats;
+
+    // 1. Rich Polished Dark Walnut Wood-Grain Texture (512x512)
+    const woodCanvas = document.createElement('canvas');
+    woodCanvas.width = 512;
+    woodCanvas.height = 512;
+    const wCtx = woodCanvas.getContext('2d');
+    const baseGrad = wCtx.createLinearGradient(0, 0, 512, 512);
+    baseGrad.addColorStop(0, '#3a2212');
+    baseGrad.addColorStop(0.5, '#2b180c');
+    baseGrad.addColorStop(1, '#3d2414');
+    wCtx.fillStyle = baseGrad;
+    wCtx.fillRect(0, 0, 512, 512);
+
+    // Fine wood fibers & plank grain lines
+    for (let i = 0; i < 240; i++) {
+      const y = (i * 2.2) % 512;
+      wCtx.strokeStyle = i % 3 === 0 ? 'rgba(18, 9, 4, 0.32)' : 'rgba(110, 68, 36, 0.16)';
+      wCtx.lineWidth = 1 + (i % 3);
+      wCtx.beginPath();
+      wCtx.moveTo(0, y);
+      wCtx.bezierCurveTo(170, y + Math.sin(i) * 8, 340, y - Math.cos(i) * 8, 512, y);
+      wCtx.stroke();
+    }
+
+    const woodTex = new THREE.CanvasTexture(woodCanvas);
+    woodTex.wrapS = THREE.RepeatWrapping;
+    woodTex.wrapT = THREE.RepeatWrapping;
+    woodTex.repeat.set(3, 1);
+
+    // 2. Brushed Antiqued Brass Texture
+    const brassCanvas = document.createElement('canvas');
+    brassCanvas.width = 256;
+    brassCanvas.height = 256;
+    const bCtx = brassCanvas.getContext('2d');
+    const bGrad = bCtx.createLinearGradient(0, 0, 256, 256);
+    bGrad.addColorStop(0, '#c8a96e');
+    bGrad.addColorStop(0.5, '#9e7f47');
+    bGrad.addColorStop(1, '#d4b87c');
+    bCtx.fillStyle = bGrad;
+    bCtx.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 120; i++) {
+      bCtx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.08)' : 'rgba(40,28,10,0.12)';
+      bCtx.fillRect(0, (i * 2.1) % 256, 256, 1.5);
+    }
+    const brassTex = new THREE.CanvasTexture(brassCanvas);
+
+    const woodMat = new THREE.MeshStandardMaterial({
+      map: woodTex,
+      roughness: 0.46,
+      metalness: 0.10
+    });
+    const brassMat = new THREE.MeshStandardMaterial({
+      map: brassTex,
+      roughness: 0.28,
+      metalness: 0.82
+    });
+    const trimMat = new THREE.MeshStandardMaterial({
+      color: 0x16241b,
+      roughness: 0.85,
+      metalness: 0.05
+    });
+
+    this._cachedTableMats = { woodMat, brassMat, trimMat };
+    return this._cachedTableMats;
+  },
+
   buildTableFrameMeshes(w, d) {
     if (!this.tableFrameGroup) return;
     while (this.tableFrameGroup.children.length > 0) {
@@ -610,25 +679,21 @@ window.App = {
       this.tableFrameGroup.remove(child);
     }
 
-    const woodMat = new THREE.MeshStandardMaterial({
-      color: 0x2e1c10,
-      roughness: 0.6,
-      metalness: 0.08
-    });
-    const brassMat = new THREE.MeshStandardMaterial({
-      color: 0xa68956,
-      roughness: 0.35,
-      metalness: 0.75
-    });
+    const { woodMat, brassMat, trimMat } = this.getTableMaterials();
 
-    const slabGeo = new THREE.BoxGeometry(w + 3.2, 1.2, d + 3.2);
+    const slabGeo = new THREE.BoxGeometry(w + 3.4, 1.2, d + 3.4);
     const slab = new THREE.Mesh(slabGeo, woodMat);
     slab.position.y = -0.62;
     slab.receiveShadow = true;
     this.tableFrameGroup.add(slab);
 
-    const rimThickness = 1.3;
-    const rimHeight = 0.5;
+    // Subtle inner felt/leather border lip around the battlemap
+    const innerLip = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.16, d + 0.4), trimMat);
+    innerLip.position.y = -0.07;
+    this.tableFrameGroup.add(innerLip);
+
+    const rimThickness = 1.35;
+    const rimHeight = 0.54;
     const rimN = new THREE.Mesh(new THREE.BoxGeometry(w + rimThickness * 2, rimHeight, rimThickness), woodMat);
     rimN.position.set(0, rimHeight / 2 - 0.1, -(d / 2 + rimThickness / 2));
     rimN.castShadow = true;
@@ -645,16 +710,31 @@ window.App = {
     const rimW = rimE.clone();
     rimW.position.x = -(w / 2 + rimThickness / 2);
 
-    this.tableFrameGroup.add(rimN, rimS, rimE, rimW);
+    // Golden brass inlay strips along top of wooden rails
+    const stripN = new THREE.Mesh(new THREE.BoxGeometry(w - 1.2, 0.04, 0.14), brassMat);
+    stripN.position.set(0, rimHeight - 0.09, -(d / 2 + rimThickness / 2));
+    const stripS = stripN.clone();
+    stripS.position.z = (d / 2 + rimThickness / 2);
+
+    const stripE = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, d - 1.2), brassMat);
+    stripE.position.set(w / 2 + rimThickness / 2, rimHeight - 0.09, 0);
+    const stripW = stripE.clone();
+    stripW.position.x = -(w / 2 + rimThickness / 2);
+
+    this.tableFrameGroup.add(rimN, rimS, rimE, rimW, stripN, stripS, stripE, stripW);
 
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([cx, cz]) => {
-      const corner = new THREE.Mesh(new THREE.BoxGeometry(1.5, rimHeight + 0.05, 1.5), brassMat);
+      const corner = new THREE.Mesh(new THREE.BoxGeometry(1.62, rimHeight + 0.06, 1.62), brassMat);
       corner.position.set(cx * (w / 2 + rimThickness / 2), rimHeight / 2 - 0.08, cz * (d / 2 + rimThickness / 2));
       this.tableFrameGroup.add(corner);
 
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.7, 16, 16), woodMat);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 0.72, 16, 20), woodMat);
       leg.position.set(cx * (w / 2 - 1.5), -8.6, cz * (d / 2 - 1.5));
       this.tableFrameGroup.add(leg);
+
+      const footCollar = new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.12, 0.6, 20), brassMat);
+      footCollar.position.set(cx * (w / 2 - 1.5), -1.4, cz * (d / 2 - 1.5));
+      this.tableFrameGroup.add(footCollar);
     });
   },
 
@@ -840,6 +920,11 @@ window.App = {
       grid: this.mapConfig.grid,
       fogEnabled: this.mapConfig.fogEnabled,
       weather: window.Effects3D ? window.Effects3D.weather : 'none',
+      skybox: window.Effects3D ? window.Effects3D.currentSkybox : 'tavern',
+      customSkyboxUrl: (window.Effects3D?.currentSkybox === 'custom' && window.Effects3D?.customSkyboxUrl && window.Effects3D.customSkyboxUrl.length < 180000)
+        ? window.Effects3D.customSkyboxUrl
+        : '',
+      placedAoEs: window.Effects3D ? window.Effects3D.getSerializedPlacedAoEs() : [],
       playersLocked: !!this.mapConfig.playersLocked,
       gmCam: window.Multiplayer?.isHost ? this.getSerializedCamState() : this.hostCamState
     };
@@ -1961,14 +2046,15 @@ window.App = {
 
       if (this.activeTool === 'laser' || this.camState.keys['KeyX']) {
         if (window.Effects3D) {
-          window.Effects3D.addLaserPoint(window.Multiplayer.myId, pt.x, pt.z, window.Multiplayer.myColor, true);
+          window.Effects3D.addLaserPoint(window.Multiplayer.myId, pt.x, pt.z, window.Effects3D.myLaserColor, true);
         }
         return;
       }
 
       if (this.activeTool === 'aoe') {
+        if (this.isPlayerActionBlocked(true)) return;
         if (window.Effects3D) {
-          window.Effects3D.updateAoEPosition(pt.x, pt.z, true);
+          window.Effects3D.handleTableClickInAoEMode(pt.x, pt.z);
         }
         return;
       }
@@ -2113,13 +2199,13 @@ window.App = {
 
       if (this.activeTool === 'laser' || this.camState.keys['KeyX']) {
         if (window.Effects3D) {
-          window.Effects3D.addLaserPoint(window.Multiplayer.myId, pt.x, pt.z, window.Multiplayer.myColor, true);
+          window.Effects3D.addLaserPoint(window.Multiplayer.myId, pt.x, pt.z, window.Effects3D.myLaserColor, true);
         }
       }
 
       if (this.activeTool === 'aoe') {
         if (window.Effects3D) {
-          window.Effects3D.updateAoEPosition(pt.x, pt.z, false);
+          window.Effects3D.updateAoEPosition(pt.x, pt.z, !!window.Effects3D.draggingAoEId);
         }
       }
 
@@ -2211,6 +2297,9 @@ window.App = {
       if (e.button === 1) this.camState.isPanning = false;
 
       if (e.button === 0) {
+        if (window.Effects3D && window.Effects3D.draggingAoEId) {
+          window.Effects3D.draggingAoEId = null;
+        }
         // Release grabbed Die -> Toss & roll it!
         if (this.grabState.dieId) {
           window.DiceRoller3D.tossSingleDie(
@@ -2297,6 +2386,15 @@ window.App = {
         return;
       }
 
+      if (this.activeTool === 'aoe' && window.Effects3D) {
+        if (e.shiftKey) {
+          window.Effects3D.adjustAoERotation(e.deltaY < 0 ? 15 : -15, true);
+        } else {
+          window.Effects3D.adjustAoERadius(e.deltaY < 0 ? 0.5 : -0.5, true);
+        }
+        return;
+      }
+
       if (this.grabState.pieceId) {
         const p = this.pieces.get(this.grabState.pieceId);
         const mesh = this.pieceMeshes.get(this.grabState.pieceId);
@@ -2331,8 +2429,14 @@ window.App = {
       else if (e.key.toLowerCase() === 'x') {
         const pt = this.getTableIntersection(this.camState.lastMouseX, this.camState.lastMouseY);
         if (pt && window.Effects3D) {
-          window.Effects3D.addLaserPoint(window.Multiplayer.myId, pt.x, pt.z, window.Multiplayer.myColor, true);
+          window.Effects3D.addLaserPoint(window.Multiplayer.myId, pt.x, pt.z, window.Effects3D.myLaserColor, true);
         }
+      }
+      else if (this.activeTool === 'aoe' && window.Effects3D && (e.key === 'Delete' || e.key === 'Backspace')) {
+        window.Effects3D.removePinnedAoE(null, true);
+      }
+      else if (this.activeTool === 'aoe' && window.Effects3D && (e.key.toLowerCase() === 'q' || e.key.toLowerCase() === 'e')) {
+        window.Effects3D.adjustAoERotation(e.key.toLowerCase() === 'e' ? 15 : -15, true);
       }
       else if (e.key.toLowerCase() === 't') this.toggleTopDownCamera();
       else if (e.key.toLowerCase() === 'g') {
@@ -2492,6 +2596,9 @@ window.App = {
   setTool(toolName) {
     this.activeTool = toolName;
     if (toolName !== 'ruler') this.stopRuler();
+    if (toolName !== 'aoe' && window.Effects3D) {
+      window.Effects3D.hideAoECursorPreview();
+    }
 
     document.querySelectorAll('.icon-btn[data-tool]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tool === toolName);
@@ -2501,21 +2608,33 @@ window.App = {
     const drawControls = document.getElementById('sub-draw-controls');
     const fogControls = document.getElementById('sub-fog-controls');
     const aoeControls = document.getElementById('sub-aoe-controls');
+    const laserControls = document.getElementById('sub-laser-controls');
 
-    if (toolName === 'draw' || toolName === 'fog' || toolName === 'aoe') {
+    if (toolName === 'draw' || toolName === 'fog' || toolName === 'aoe' || toolName === 'laser') {
       subBar.classList.add('visible');
       if (drawControls) drawControls.style.display = toolName === 'draw' ? 'flex' : 'none';
       if (fogControls) fogControls.style.display = toolName === 'fog' ? 'flex' : 'none';
       if (aoeControls) aoeControls.style.display = toolName === 'aoe' ? 'flex' : 'none';
-      if (toolName === 'aoe' && window.Effects3D && !window.Effects3D.aoeTemplate.active) {
-        window.Effects3D.setAoETemplate('circle', 6, '#ea580c', true);
+      if (laserControls) laserControls.style.display = toolName === 'laser' ? 'flex' : 'none';
+      if (toolName === 'aoe' && window.Effects3D) {
+        window.Effects3D.setAoETemplate(
+          window.Effects3D.aoeTemplate.type || 'circle',
+          window.Effects3D.aoeTemplate.radiusMeters || 6,
+          window.Effects3D.aoeTemplate.color || '#ea580c',
+          false
+        );
+        this.showToast('Área de Efeito: Clique no mapa para FIXAR! Use o Scroll para aumentar/diminuir.');
       }
     } else {
       subBar.classList.remove('visible');
     }
 
     if (toolName === 'laser') {
-      this.showToast('Ponteiro Laser ativado! Mova o mouse na mesa ou segure a tecla X.');
+      const picker = document.getElementById('laser-color-picker');
+      if (picker && window.Effects3D?.myLaserColor) {
+        picker.value = window.Effects3D.myLaserColor;
+      }
+      this.showToast('Ponteiro Laser ativado! Escolha a cor na barra ou segure a tecla X.');
     }
   },
 
@@ -2762,6 +2881,12 @@ window.App = {
       const sel = document.getElementById('weather-select');
       if (sel) sel.value = s.weather;
     }
+    if (s.skybox && window.Effects3D) {
+      window.Effects3D.setSkybox(s.skybox, s.customSkyboxUrl || '', false);
+    }
+    if (Array.isArray(s.placedAoEs) && window.Effects3D) {
+      window.Effects3D.applySerializedPlacedAoEs(s.placedAoEs);
+    }
     if (typeof s.playersLocked === 'boolean') {
       this.mapConfig.playersLocked = s.playersLocked;
     }
@@ -2971,6 +3096,16 @@ window.App = {
           window.Effects3D.addLaserPoint(msg.senderId, msg.x, msg.z, msg.color, false);
         }
         break;
+      case 'aoe_pin_update':
+        if (window.Effects3D && msg.aoe) {
+          window.Effects3D.addOrUpdatePinnedAoE(msg.aoe, false);
+        }
+        break;
+      case 'aoe_pin_delete':
+        if (window.Effects3D && msg.aoeId) {
+          window.Effects3D.removePinnedAoE(msg.aoeId, false);
+        }
+        break;
       case 'aoe_template_update':
         if (window.Effects3D && msg.state) {
           window.Effects3D.setAoETemplate(msg.state.type, msg.state.radiusMeters, msg.state.color, false);
@@ -2986,6 +3121,19 @@ window.App = {
         if (window.Effects3D) {
           window.Effects3D.clearAoETemplate(false);
         }
+        break;
+      case 'skybox_sync':
+        if (window.Effects3D && msg.skybox) {
+          window.Effects3D.setSkybox(msg.skybox, msg.customUrl || '', false);
+        }
+        break;
+      case 'handout_show':
+        if (msg.imageUrl) {
+          this.displayHandoutOverlay(msg.imageUrl, msg.title || 'Ilustração da Sessão');
+        }
+        break;
+      case 'handout_close':
+        document.getElementById('handout-viewer-modal')?.classList.remove('open');
         break;
       case 'weather_sync':
         if (window.Effects3D && msg.weather) {
@@ -3224,6 +3372,46 @@ window.App = {
     if (drawerDims) {
       const cellSize = this.mapConfig.grid.cellSize || 2;
       drawerDims.textContent = `Mesa atual: ${this.tableWidth} × ${this.tableDepth} un (${Math.round(this.tableWidth / cellSize)} × ${Math.round(this.tableDepth / cellSize)} q)`;
+    }
+  },
+
+  displayHandoutOverlay(imageUrl, title = 'Ilustração da Sessão') {
+    const modal = document.getElementById('handout-viewer-modal');
+    const img = document.getElementById('handout-viewer-img');
+    const titleEl = document.getElementById('handout-viewer-title');
+    if (!modal || !img) return;
+    img.src = imageUrl;
+    if (titleEl) titleEl.textContent = title || 'Ilustração da Sessão';
+    modal.classList.add('open');
+    if (window.SoundEngine) {
+      window.SoundEngine.playPingSound();
+    }
+  },
+
+  async sendHandoutToAll(imageUrl, title = 'Ilustração da Sessão') {
+    if (!imageUrl) {
+      this.showToast('Selecione uma imagem ou cole um link primeiro.');
+      return;
+    }
+    let safeUrl = imageUrl;
+    if (safeUrl.startsWith('data:image')) {
+      safeUrl = await this.compressImageForNetwork(safeUrl, 960, 0.72);
+    }
+    this.displayHandoutOverlay(safeUrl, title);
+    if (window.Multiplayer) {
+      window.Multiplayer.broadcast({
+        type: 'handout_show',
+        imageUrl: safeUrl,
+        title: title || 'Ilustração da Sessão'
+      });
+    }
+    this.showToast('Ilustração exibida na tela de todos os jogadores!');
+  },
+
+  closeHandoutForAll() {
+    document.getElementById('handout-viewer-modal')?.classList.remove('open');
+    if (window.Multiplayer?.isHost) {
+      window.Multiplayer.broadcast({ type: 'handout_close' });
     }
   },
 

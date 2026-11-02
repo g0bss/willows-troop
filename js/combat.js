@@ -1,13 +1,16 @@
 // ============================================================================
 // WILLOW'S TROOP - COMBAT & INITIATIVE TRACKER ENGINE
-// Minimal, elegant top HUD bar for tabletop RPG rounds, turn orders and highlights
+// Direct manual entry: GM types Character/Enemy Name + Initiative Number
+// Automatically sorts descending, tracks rounds & turns, and syncs to all players
 // ============================================================================
 
 window.CombatTracker = {
   isOpen: false,
   round: 1,
   currentTurn: 0,
-  combatants: [], // Array of { id, pieceId, name, hp, maxHp, ac, initiative, color, imageUrl }
+  combatants: [], // Array of { id, name, initiative, color, pieceId }
+
+  palette: ['#68a378', '#3b82f6', '#c94a4a', '#d99b26', '#a855f7', '#06b6d4', '#ec4899', '#f97316'],
 
   init() {
     this.renderUI();
@@ -19,66 +22,76 @@ window.CombatTracker = {
     const btn = document.getElementById('btn-toggle-combat');
     if (bar) bar.classList.toggle('visible', this.isOpen);
     if (btn) btn.classList.toggle('active', this.isOpen);
-    if (this.isOpen && this.combatants.length === 0 && window.App) {
-      this.pullPiecesFromTable(false);
-    }
     this.renderUI();
     if (window.Multiplayer?.isHost) {
       this.broadcastState();
     }
+    if (this.isOpen) {
+      setTimeout(() => {
+        document.getElementById('combat-add-name')?.focus();
+      }, 100);
+    }
   },
 
-  pullPiecesFromTable(broadcast = true) {
-    if (!window.App) return;
-    const pieces = Array.from(window.App.pieces.values()).filter(p => p.style !== 'prop' && p.style !== 'pin');
-    
-    // Add missing pieces
-    pieces.forEach(p => {
-      const exists = this.combatants.find(c => c.pieceId === p.id);
-      if (!exists) {
-        this.combatants.push({
-          id: 'c_' + p.id,
-          pieceId: p.id,
-          name: p.name || 'Personagem',
-          hp: p.hp ?? 30,
-          maxHp: p.maxHp ?? 30,
-          ac: p.ac ?? 14,
-          initiative: Math.floor(Math.random() * 20) + 1,
-          color: p.color || '#4d7c5b',
-          imageUrl: p.imageUrl || null
-        });
-      }
+  addManualCombatant() {
+    if (window.App?.isPlayerActionBlocked && window.App.isPlayerActionBlocked(true)) return;
+    const nameInput = document.getElementById('combat-add-name');
+    const initInput = document.getElementById('combat-add-init');
+    if (!nameInput || !initInput) return;
+
+    const name = nameInput.value.trim();
+    const initVal = Number(initInput.value);
+
+    if (!name) {
+      if (window.App) window.App.showToast('Digite o nome do personagem ou inimigo.');
+      nameInput.focus();
+      return;
+    }
+
+    const initiative = Number.isFinite(initVal) && initInput.value !== '' ? initVal : 10;
+
+    // Optional: link to a piece on the table if a piece has a matching name
+    let matchedPiece = null;
+    if (window.App && window.App.pieces) {
+      const lower = name.toLowerCase();
+      matchedPiece = Array.from(window.App.pieces.values()).find(
+        p => (p.name || '').toLowerCase() === lower || (p.name || '').toLowerCase().includes(lower)
+      );
+    }
+
+    const color = matchedPiece?.color || this.palette[this.combatants.length % this.palette.length];
+
+    this.combatants.push({
+      id: 'c_' + Date.now() + '_' + Math.floor(Math.random() * 999),
+      name,
+      initiative,
+      color,
+      pieceId: matchedPiece ? matchedPiece.id : null
     });
+
+    nameInput.value = '';
+    initInput.value = '';
+    nameInput.focus();
 
     this.sortCombatants();
     this.renderUI();
-    if (broadcast && window.Multiplayer?.isHost) {
+    if (window.SoundEngine) window.SoundEngine.playPieceLift();
+    if (window.Multiplayer) {
       this.broadcastState();
-      window.App.showToast('Combatentes importados da mesa!');
     }
   },
 
   sortCombatants() {
-    this.combatants.sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
+    const currentActiveId = this.combatants[this.currentTurn]?.id;
+    this.combatants.sort((a, b) => (Number(b.initiative) || 0) - (Number(a.initiative) || 0));
+    if (currentActiveId) {
+      const newIdx = this.combatants.findIndex(c => c.id === currentActiveId);
+      this.currentTurn = newIdx >= 0 ? newIdx : 0;
+    }
     if (this.currentTurn >= this.combatants.length) {
       this.currentTurn = 0;
     }
     this.highlightActiveCombatantPiece();
-  },
-
-  rollAllInitiative() {
-    if (window.App?.isPlayerActionBlocked && window.App.isPlayerActionBlocked(true)) return;
-    this.combatants.forEach(c => {
-      c.initiative = Math.floor(Math.random() * 20) + 1;
-    });
-    this.sortCombatants();
-    this.currentTurn = 0;
-    this.renderUI();
-    if (window.SoundEngine) window.SoundEngine.playDiceShake();
-    if (window.App) window.App.showToast('Iniciativa rolada para todos os combatentes!');
-    if (window.Multiplayer?.isHost) {
-      this.broadcastState();
-    }
   },
 
   nextTurn() {
@@ -95,14 +108,12 @@ window.CombatTracker = {
     const active = this.combatants[this.currentTurn];
     if (window.SoundEngine) window.SoundEngine.playChime(false);
     if (active && window.App) {
-      window.App.showToast(`Turno de: ${active.name}`);
+      window.App.showToast(`Vez de: ${active.name} (Iniciativa ${active.initiative})`);
     }
 
     this.highlightActiveCombatantPiece();
     this.renderUI();
-    if (window.Multiplayer?.isHost) {
-      this.broadcastState();
-    }
+    this.broadcastState();
   },
 
   prevTurn() {
@@ -117,78 +128,94 @@ window.CombatTracker = {
 
     this.highlightActiveCombatantPiece();
     this.renderUI();
-    if (window.Multiplayer?.isHost) {
-      this.broadcastState();
-    }
+    this.broadcastState();
   },
 
   setCombatantInitiative(id, value) {
+    if (window.App?.isPlayerActionBlocked && window.App.isPlayerActionBlocked(true)) return;
     const c = this.combatants.find(item => item.id === id);
     if (c) {
       c.initiative = Number(value) || 0;
       this.sortCombatants();
       this.renderUI();
-      if (window.Multiplayer?.isHost) this.broadcastState();
+      this.broadcastState();
     }
   },
 
   removeCombatant(id) {
+    if (window.App?.isPlayerActionBlocked && window.App.isPlayerActionBlocked(true)) return;
     this.combatants = this.combatants.filter(c => c.id !== id);
     if (this.currentTurn >= this.combatants.length) {
       this.currentTurn = Math.max(0, this.combatants.length - 1);
     }
     this.renderUI();
     this.highlightActiveCombatantPiece();
-    if (window.Multiplayer?.isHost) this.broadcastState();
+    this.broadcastState();
   },
 
   clearCombat() {
+    if (window.App?.isPlayerActionBlocked && window.App.isPlayerActionBlocked(true)) return;
     this.combatants = [];
     this.round = 1;
     this.currentTurn = 0;
     this.highlightActiveCombatantPiece();
     this.renderUI();
-    if (window.Multiplayer?.isHost) this.broadcastState();
+    this.broadcastState();
   },
 
   highlightActiveCombatantPiece() {
     if (!window.App) return;
     const active = this.combatants[this.currentTurn];
-    if (active && active.pieceId) {
-      const mesh = window.App.pieceMeshes?.get(active.pieceId);
-      if (mesh) {
-        // Create or update active turn pulse ring in 3D scene
-        if (!this.turnRingMesh) {
-          const ringGeo = new THREE.RingGeometry(1.0, 1.4, 32);
-          ringGeo.rotateX(-Math.PI / 2);
-          const ringMat = new THREE.MeshBasicMaterial({
-            color: 0xf59e0b,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.85
-          });
-          this.turnRingMesh = new THREE.Mesh(ringGeo, ringMat);
-          window.App.scene.add(this.turnRingMesh);
+    let targetMesh = null;
+
+    if (active) {
+      if (active.pieceId && window.App.pieceMeshes?.has(active.pieceId)) {
+        targetMesh = window.App.pieceMeshes.get(active.pieceId);
+      } else if (window.App.pieces) {
+        const lower = (active.name || '').toLowerCase();
+        const found = Array.from(window.App.pieces.values()).find(
+          p => (p.name || '').toLowerCase() === lower
+        );
+        if (found) {
+          active.pieceId = found.id;
+          targetMesh = window.App.pieceMeshes.get(found.id);
         }
-        this.turnRingMesh.position.set(mesh.position.x, 0.04, mesh.position.z);
-        this.turnRingMesh.visible = true;
-        return;
       }
     }
-    if (this.turnRingMesh) {
+
+    if (targetMesh) {
+      if (!this.turnRingMesh) {
+        const ringGeo = new THREE.RingGeometry(1.05, 1.45, 36);
+        ringGeo.rotateX(-Math.PI / 2);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0xf59e0b,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.88
+        });
+        this.turnRingMesh = new THREE.Mesh(ringGeo, ringMat);
+        window.App.scene.add(this.turnRingMesh);
+      }
+      this.turnRingMesh.position.set(targetMesh.position.x, 0.04, targetMesh.position.z);
+      this.turnRingMesh.visible = true;
+    } else if (this.turnRingMesh) {
       this.turnRingMesh.visible = false;
     }
   },
 
-  focusCameraOnActive() {
+  selectCombatantTurn(idx) {
+    if (window.App?.isPlayerActionBlocked && window.App.isPlayerActionBlocked(true)) return;
+    if (idx < 0 || idx >= this.combatants.length) return;
+    this.currentTurn = idx;
     const active = this.combatants[this.currentTurn];
-    if (active && active.pieceId && window.App) {
+    this.highlightActiveCombatantPiece();
+    if (active && active.pieceId && window.App?.pieces.has(active.pieceId)) {
       const p = window.App.pieces.get(active.pieceId);
-      if (p) {
-        window.App.camState.target.set(p.x, 0, p.z);
-        window.App.updateCameraTransform();
-      }
+      window.App.camState.target.set(p.x, 0, p.z);
+      window.App.updateCameraTransform();
     }
+    this.renderUI();
+    this.broadcastState();
   },
 
   broadcastState() {
@@ -220,40 +247,48 @@ window.CombatTracker = {
     this.renderUI();
   },
 
+  escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  },
+
   renderUI() {
     const listEl = document.getElementById('turn-tracker-list');
     const roundEl = document.getElementById('turn-tracker-round');
+    const formEl = document.getElementById('turn-tracker-add-form');
     if (!listEl) return;
 
     if (roundEl) roundEl.textContent = `Rodada ${this.round}`;
+    if (formEl) {
+      const isGM = !window.Multiplayer || window.Multiplayer.isHost || window.Multiplayer.myRole === 'gm';
+      formEl.style.display = isGM ? 'flex' : 'none';
+    }
 
     if (this.combatants.length === 0) {
-      listEl.innerHTML = `<span style="font-size:11.5px; color:var(--text-secondary); padding:4px 8px;">Nenhum combatente na lista. Clique em "Puxar da Mesa".</span>`;
+      listEl.innerHTML = `<span style="font-size:11.5px; color:var(--text-secondary); padding:4px 8px; white-space:nowrap;">Digite o nome e a iniciativa ao lado para adicionar à fila.</span>`;
       return;
     }
 
     listEl.innerHTML = this.combatants.map((c, idx) => {
       const isActive = idx === this.currentTurn;
-      const hpPercent = c.maxHp > 0 ? Math.max(0, Math.min(100, (c.hp / c.maxHp) * 100)) : 100;
-      const hpColor = hpPercent > 50 ? '#4d9e6d' : (hpPercent > 25 ? '#d99b26' : '#c94a4a');
-      const avatarHtml = c.imageUrl
-        ? `<img src="${c.imageUrl}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;" />`
-        : `<div style="width:24px; height:24px; border-radius:50%; background:${c.color}; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold; color:#fff;">${c.name.slice(0, 2).toUpperCase()}</div>`;
+      const initials = (c.name || '?').slice(0, 2).toUpperCase();
 
       return `
-        <div class="turn-card ${isActive ? 'active' : ''}" onclick="CombatTracker.focusCameraOnActive()">
-          ${avatarHtml}
-          <div class="turn-card-info">
-            <span class="turn-card-name" title="${c.name}">${c.name}</span>
-            <div class="turn-card-hp-bar">
-              <div style="width:${hpPercent}%; background:${hpColor}; height:100%;"></div>
-            </div>
+        <div class="turn-card ${isActive ? 'active' : ''}" onclick="CombatTracker.selectCombatantTurn(${idx})" title="Clique para definir turno / focar">
+          <div style="width:22px; height:22px; border-radius:50%; background:${c.color || '#4d7c5b'}; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; flex-shrink:0;">
+            ${this.escapeHtml(initials)}
           </div>
-          <div class="turn-card-init">
-            <input type="number" value="${c.initiative}" style="width:34px; text-align:center; font-size:11px; padding:1px; background:#12171d; border:1px solid var(--border-muted); border-radius:3px; color:#fde68a;"
+          <div class="turn-card-info">
+            <span class="turn-card-name">${this.escapeHtml(c.name)}</span>
+          </div>
+          <div class="turn-card-init" title="Valor da Iniciativa">
+            <input type="number" value="${c.initiative}" style="width:38px; text-align:center; font-size:11.5px; font-weight:700; padding:2px; background:#12171d; border:1px solid var(--border-muted); border-radius:4px; color:#fde68a;"
               onchange="CombatTracker.setCombatantInitiative('${c.id}', this.value)" onclick="event.stopPropagation()" />
           </div>
-          <button class="turn-card-del" onclick="event.stopPropagation(); CombatTracker.removeCombatant('${c.id}')" title="Remover da ordem">✕</button>
+          <button class="turn-card-del" onclick="event.stopPropagation(); CombatTracker.removeCombatant('${c.id}')" title="Remover da iniciativa">✕</button>
         </div>
       `;
     }).join('');
