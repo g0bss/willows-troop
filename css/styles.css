@@ -1242,20 +1242,45 @@ input[type="color"] {
 }
 
 .init-col-val {
+  width: 76px;
   text-align: center;
 }
 
 .init-val-input {
-  width: 46px;
-  height: 27px;
+  width: 64px;
+  height: 32px;
   text-align: center;
-  font-size: 12.5px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 800;
   padding: 2px 4px;
-  background: #0f1319;
-  border: 1px solid var(--border-muted);
-  border-radius: 4px;
+  background: #0c1017;
+  border: 1.5px solid var(--border-muted);
+  border-radius: 6px;
   color: #fde68a;
+  transition: all 0.15s ease;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.init-val-input:hover,
+.init-val-input:focus {
+  border-color: var(--accent-gold);
+  background: #141a24;
+  outline: none;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.35);
+}
+
+/* Remove default number spinner arrows for clean look & max digit space */
+.init-val-input::-webkit-outer-spin-button,
+.init-val-input::-webkit-inner-spin-button,
+#combat-add-init::-webkit-outer-spin-button,
+#combat-add-init::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.init-val-input,
+#combat-add-init {
+  -moz-appearance: textfield;
 }
 
 .init-col-del {

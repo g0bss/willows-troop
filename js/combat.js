@@ -334,7 +334,8 @@ window.CombatTracker = {
             <span class="init-name-text">${this.escapeHtml(c.name)}</span>
           </td>
           <td class="init-col-val" onclick="event.stopPropagation()">
-            <input type="number" class="init-val-input" value="${c.initiative}"
+            <input type="number" class="init-val-input" value="${c.initiative}" min="0" max="999"
+              onfocus="this.select()"
               onchange="CombatTracker.setCombatantInitiative('${c.id}', this.value)" />
           </td>
           <td class="init-col-del" onclick="event.stopPropagation()">

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Willow's Troop</title>
   <link rel="icon" type="image/jpeg" href="assets/frog-druid-logo.jpg" />
-  <link rel="stylesheet" href="css/styles.css?v=4.4" />
+  <link rel="stylesheet" href="css/styles.css?v=4.5" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
@@ -287,8 +287,8 @@
       <div class="init-add-bar" id="turn-tracker-add-form">
         <input type="text" id="combat-add-name" placeholder="Nome (ex: Goblin, Willow)" style="flex:1; min-width:0;"
           onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" />
-        <input type="number" id="combat-add-init" placeholder="Inic." value="15" style="width:54px; text-align:center;"
-          title="Valor da Iniciativa" onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" />
+        <input type="number" id="combat-add-init" placeholder="Inic." value="15" style="width:64px; height:32px; font-size:14px; font-weight:700; text-align:center;"
+          title="Valor da Iniciativa" onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" onfocus="this.select()" />
         <button class="btn btn-primary btn-sm" onclick="CombatTracker.addManualCombatant()" title="Adicionar à lista">+ Add</button>
       </div>
 
@@ -298,7 +298,7 @@
             <tr>
               <th style="width:36px; text-align:center;">#</th>
               <th>Personagem / Inimigo</th>
-              <th style="width:58px; text-align:center;">Inic.</th>
+              <th style="width:76px; text-align:center;">Inic.</th>
               <th style="width:28px;"></th>
             </tr>
           </thead>
@@ -1143,14 +1143,14 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=4.4"></script>
-  <script src="js/effects.js?v=4.4"></script>
-  <script src="js/combat.js?v=4.4"></script>
-  <script src="js/maps.js?v=4.4"></script>
-  <script src="js/models3d.js?v=4.4"></script>
-  <script src="js/dice3d.js?v=4.4"></script>
-  <script src="js/multiplayer.js?v=4.4"></script>
-  <script src="js/app.js?v=4.4"></script>
+  <script src="js/audio.js?v=4.5"></script>
+  <script src="js/effects.js?v=4.5"></script>
+  <script src="js/combat.js?v=4.5"></script>
+  <script src="js/maps.js?v=4.5"></script>
+  <script src="js/models3d.js?v=4.5"></script>
+  <script src="js/dice3d.js?v=4.5"></script>
+  <script src="js/multiplayer.js?v=4.5"></script>
+  <script src="js/app.js?v=4.5"></script>
 
   <script>
     function switchDrawerTab(tabId, el) {
