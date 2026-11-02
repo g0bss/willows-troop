@@ -316,7 +316,7 @@ window.CombatTracker = {
     if (this.combatants.length === 0) {
       listEl.innerHTML = `
         <tr class="init-empty-row">
-          <td colspan="4">Nenhum combatente na lista.<br/>Digite o <strong>Nome</strong> e a <strong>Iniciativa</strong> acima para adicionar.</td>
+          <td colspan="4">Nenhum combatente na lista.<br/>Digite o <strong>Nome</strong> e a <strong>Iniciativa</strong> acima ou clique em <strong>Puxar Peças da Mesa</strong>.</td>
         </tr>
       `;
       return;

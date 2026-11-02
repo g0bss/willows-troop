@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Willow's Troop</title>
   <link rel="icon" type="image/jpeg" href="assets/frog-druid-logo.jpg" />
-  <link rel="stylesheet" href="css/styles.css?v=4.3" />
+  <link rel="stylesheet" href="css/styles.css?v=4.4" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
@@ -312,8 +312,8 @@
           <button class="btn btn-primary btn-sm" style="flex:1.4" onclick="CombatTracker.nextTurn()" title="Próximo Turno">Próximo Turno ▶</button>
         </div>
         <div style="display:flex; gap:6px; width:100%;">
-          <button class="btn btn-sm" style="flex:1" onclick="CombatTracker.pullPiecesFromTable(false)" title="Importar miniaturas que estão na mesa">Puxar da Mesa</button>
-          <button class="btn btn-danger btn-sm" style="flex:1" onclick="CombatTracker.clearCombatants()" title="Limpar toda a lista">Limpar</button>
+          <button class="btn btn-sm" style="flex:1" onclick="CombatTracker.pullPiecesFromTable(false)" title="Importa todas as miniaturas e monstros da mesa para a iniciativa com rolagem automática de d20">Puxar Peças da Mesa</button>
+          <button class="btn btn-danger btn-sm" style="flex:0.8" onclick="CombatTracker.clearCombatants()" title="Limpar toda a lista">Limpar</button>
         </div>
       </div>
     </div>
@@ -327,22 +327,25 @@
     <button class="icon-btn" data-tool="ruler" data-tooltip="Régua de Distância (2 ou Tab)" onclick="App.setTool('ruler')">
       <svg viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
     </button>
-    <button class="icon-btn" data-tool="draw" data-tooltip="Desenhar na Mesa (3)" onclick="App.setTool('draw')">
+    <button class="icon-btn" data-tool="draw" data-tooltip="Desenhar no Tabuleiro (3)" onclick="App.setTool('draw'); App.setDrawMode('pen');">
       <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
     </button>
-    <button class="icon-btn" id="btn-tool-fog" data-tool="fog" data-tooltip="Névoa de Guerra (4)" onclick="App.setTool('fog')">
+    <button class="icon-btn" data-tool="eraser" data-tooltip="Borracha na Mesa (4 ou B)" onclick="App.setTool('draw'); App.setDrawMode('eraser');">
+      <svg viewBox="0 0 24 24"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+    </button>
+    <button class="icon-btn" id="btn-tool-fog" data-tool="fog" data-tooltip="Névoa de Guerra (5)" onclick="App.setTool('fog')">
       <svg viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
     </button>
-    <button class="icon-btn" data-tool="ping" data-tooltip="Sinalizar Ponto (5 ou Alt+Clique)" onclick="App.setTool('ping')">
+    <button class="icon-btn" data-tool="ping" data-tooltip="Sinalizar Ponto (6 ou Alt+Clique)" onclick="App.setTool('ping')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
     </button>
-    <button class="icon-btn" data-tool="pin" data-tooltip="Inserir Marcador 3D (6)" onclick="App.setTool('pin')">
+    <button class="icon-btn" data-tool="pin" data-tooltip="Inserir Marcador 3D (7)" onclick="App.setTool('pin')">
       <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
     </button>
-    <button class="icon-btn" data-tool="laser" data-tooltip="Ponteiro Laser 3D (Atalho: X ou 7)" onclick="App.setTool('laser')">
+    <button class="icon-btn" data-tool="laser" data-tooltip="Ponteiro Laser 3D (Atalho: X ou 8)" onclick="App.setTool('laser')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
     </button>
-    <button class="icon-btn" data-tool="aoe" data-tooltip="Área de Efeito / Molde de Magia (8)" onclick="App.setTool('aoe')">
+    <button class="icon-btn" data-tool="aoe" data-tooltip="Área de Efeito / Molde de Magia (9)" onclick="App.setTool('aoe')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
     </button>
 
@@ -358,18 +361,42 @@
 
   <!-- CONTEXTUAL SUB-TOOLBAR FOR DRAWING OR FOG OF WAR -->
   <div id="sub-toolbar">
-    <div id="sub-draw-controls" style="display:none; align-items:center; gap:8px;">
-      <span>Traço:</span>
-      <select id="draw-mode-select" style="width:110px" onchange="App.drawConfig.mode = this.value">
-        <option value="pen">Caneta Livre</option>
-        <option value="line">Linha Reta</option>
-        <option value="circle">Círculo</option>
-        <option value="rect">Retângulo</option>
-        <option value="eraser">Borracha</option>
-      </select>
-      <input type="color" id="draw-color-picker" value="#c94a4a" onchange="App.drawConfig.color = this.value" />
-      <input type="range" min="2" max="32" value="8" style="width:75px" oninput="App.drawConfig.size = Number(this.value)" />
-      <button class="btn btn-danger" onclick="App.clearTableDrawings(true)">Limpar</button>
+    <div id="sub-draw-controls" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
+      <div class="draw-mode-group">
+        <button class="draw-mode-btn active" data-mode="pen" onclick="App.setDrawMode('pen')" title="Caneta Livre">
+          <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+          <span>Caneta</span>
+        </button>
+        <button class="draw-mode-btn" data-mode="line" onclick="App.setDrawMode('line')" title="Linha Reta">
+          <svg viewBox="0 0 24 24"><line x1="5" y1="19" x2="19" y2="5"/></svg>
+          <span>Linha</span>
+        </button>
+        <button class="draw-mode-btn" data-mode="rect" onclick="App.setDrawMode('rect')" title="Retângulo">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <span>Retângulo</span>
+        </button>
+        <button class="draw-mode-btn" data-mode="circle" onclick="App.setDrawMode('circle')" title="Círculo">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+          <span>Círculo</span>
+        </button>
+        <button class="draw-mode-btn" data-mode="text" onclick="App.setDrawMode('text')" title="Caixa de Texto (Clique no mapa para escrever)">
+          <svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+          <span>Texto</span>
+        </button>
+        <button class="draw-mode-btn eraser-btn" data-mode="eraser" onclick="App.setDrawMode('eraser')" title="Borracha (Apagar traços)">
+          <svg viewBox="0 0 24 24"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+          <span>Borracha</span>
+        </button>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:6px;">
+        <input type="color" id="draw-color-picker" value="#c94a4a" title="Cor da tinta/texto" onchange="App.drawConfig.color = this.value" />
+        <label style="font-size:11px;">Tam:</label>
+        <input type="range" id="draw-size-range" min="2" max="36" value="8" style="width:70px" oninput="App.drawConfig.size = Number(this.value); document.getElementById('draw-size-val').textContent = this.value + 'px';" />
+        <span id="draw-size-val" style="font-size:11px; font-weight:600; width:28px;">8px</span>
+      </div>
+
+      <button class="btn btn-danger btn-sm" onclick="App.clearTableDrawings(true)">Limpar Tudo</button>
     </div>
 
     <div id="sub-fog-controls" style="display:none; align-items:center; gap:8px;">
@@ -1116,14 +1143,14 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=4.3"></script>
-  <script src="js/effects.js?v=4.3"></script>
-  <script src="js/combat.js?v=4.3"></script>
-  <script src="js/maps.js?v=4.3"></script>
-  <script src="js/models3d.js?v=4.3"></script>
-  <script src="js/dice3d.js?v=4.3"></script>
-  <script src="js/multiplayer.js?v=4.3"></script>
-  <script src="js/app.js?v=4.3"></script>
+  <script src="js/audio.js?v=4.4"></script>
+  <script src="js/effects.js?v=4.4"></script>
+  <script src="js/combat.js?v=4.4"></script>
+  <script src="js/maps.js?v=4.4"></script>
+  <script src="js/models3d.js?v=4.4"></script>
+  <script src="js/dice3d.js?v=4.4"></script>
+  <script src="js/multiplayer.js?v=4.4"></script>
+  <script src="js/app.js?v=4.4"></script>
 
   <script>
     function switchDrawerTab(tabId, el) {

@@ -541,7 +541,7 @@ window.App = {
       metalness: 0.04
     });
     this.mapMesh = new THREE.Mesh(mapGeo, this.mapMat);
-    this.mapMesh.position.y = 0.004;
+    this.mapMesh.position.y = 0.008;
     this.mapMesh.receiveShadow = true;
     this.mapMesh.name = 'mapSurface';
     this.tableGroup.add(this.mapMesh);
@@ -560,7 +560,7 @@ window.App = {
       depthWrite: false
     });
     this.gridMesh = new THREE.Mesh(gridGeo, gridMat);
-    this.gridMesh.position.y = 0.015;
+    this.gridMesh.position.y = 0.016;
     this.tableGroup.add(this.gridMesh);
 
     this.drawCanvas = document.createElement('canvas');
@@ -577,7 +577,7 @@ window.App = {
       depthWrite: false
     });
     this.drawMesh = new THREE.Mesh(drawGeo, drawMat);
-    this.drawMesh.position.y = 0.025;
+    this.drawMesh.position.y = 0.024;
     this.tableGroup.add(this.drawMesh);
 
     this.fogCanvas = document.createElement('canvas');
@@ -688,9 +688,9 @@ window.App = {
     slab.receiveShadow = true;
     this.tableFrameGroup.add(slab);
 
-    // Subtle inner felt/leather border lip below the battlemap surface (top at -0.02, below mapMesh at +0.004)
+    // Subtle inner felt/leather border lip below the battlemap surface (top at -0.14, far below mapMesh at +0.008)
     const innerLip = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.16, d + 0.4), trimMat);
-    innerLip.position.y = -0.10;
+    innerLip.position.y = -0.22;
     this.tableFrameGroup.add(innerLip);
 
     const rimThickness = 1.35;
@@ -1789,6 +1789,24 @@ window.App = {
     });
   },
 
+  setDrawMode(mode) {
+    this.drawConfig.mode = mode || 'pen';
+    document.querySelectorAll('#sub-draw-controls .draw-mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === this.drawConfig.mode);
+    });
+
+    const penDock = document.querySelector('.icon-btn[data-tool="draw"]');
+    const eraserDock = document.querySelector('.icon-btn[data-tool="eraser"]');
+    if (penDock) penDock.classList.toggle('active', this.activeTool === 'draw' && this.drawConfig.mode !== 'eraser');
+    if (eraserDock) eraserDock.classList.toggle('active', this.activeTool === 'draw' && this.drawConfig.mode === 'eraser');
+
+    if (mode === 'text') {
+      this.showToast('Caixa de Texto: Clique no mapa onde deseja escrever!');
+    } else if (mode === 'eraser') {
+      this.showToast('Borracha ativada: Clique e arraste sobre o mapa para apagar traços e textos.');
+    }
+  },
+
   drawStrokeOnTable(u1, v1, u2, v2, mode, color, size, broadcast = true) {
     const ctx = this.drawCtx;
     const w = this.drawCanvas.width;
@@ -1799,8 +1817,9 @@ window.App = {
     ctx.save();
     if (mode === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = size * 3;
+      ctx.lineWidth = Math.max(12, size * 3.5);
       ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
@@ -1835,6 +1854,79 @@ window.App = {
       window.Multiplayer.broadcast({
         type: 'draw_stroke',
         u1, v1, u2, v2, mode, color, size
+      });
+    }
+  },
+
+  drawTextOnTable(u, v, text, color = '#ffffff', fontSize = 8, broadcast = true) {
+    if (!text || !this.drawCtx) return;
+    const ctx = this.drawCtx;
+    const w = this.drawCanvas.width;
+    const h = this.drawCanvas.height;
+    const x = Math.max(16, Math.min(w - 20, u * w));
+    const y = Math.max(16, Math.min(h - 20, v * h));
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+
+    const baseSize = Math.max(16, Math.min(64, Math.round((Number(fontSize) || 8) * 2.5)));
+    ctx.font = `700 ${baseSize}px 'Segoe UI', system-ui, -apple-system, sans-serif`;
+
+    const lines = String(text).split('\n').filter(l => l.length > 0);
+    if (lines.length === 0) {
+      ctx.restore();
+      return;
+    }
+
+    let maxWidth = 0;
+    lines.forEach(line => {
+      const metrics = ctx.measureText(line);
+      if (metrics.width > maxWidth) maxWidth = metrics.width;
+    });
+
+    const lineHeight = baseSize * 1.25;
+    const padX = 14;
+    const padY = 9;
+    const boxW = maxWidth + padX * 2;
+    const boxH = lines.length * lineHeight + padY * 2;
+    const boxX = Math.max(8, Math.min(w - boxW - 8, x - 10));
+    const boxY = Math.max(8, Math.min(h - boxH - 8, y - 10));
+
+    // Dark frosted translucent plaque background
+    ctx.fillStyle = 'rgba(11, 14, 20, 0.88)';
+    ctx.strokeStyle = color || '#c94a4a';
+    ctx.lineWidth = 2.5;
+
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(boxX, boxY, boxW, boxH, 8);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(boxX, boxY, boxW, boxH);
+      ctx.strokeRect(boxX, boxY, boxW, boxH);
+    }
+
+    // Text rendering with subtle shadow for crispness
+    ctx.fillStyle = color || '#ffffff';
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+
+    lines.forEach((line, idx) => {
+      ctx.fillText(line, boxX + padX, boxY + padY + idx * lineHeight);
+    });
+
+    ctx.restore();
+    this.drawTexture.needsUpdate = true;
+
+    if (broadcast) {
+      window.Multiplayer.broadcast({
+        type: 'draw_text',
+        u, v, text, color, fontSize: fontSize || this.drawConfig.size
       });
     }
   },
@@ -2100,6 +2192,13 @@ window.App = {
       if (this.activeTool === 'draw') {
         if (this.isPlayerActionBlocked(true)) return;
         const uv = this.worldToUV(pt.x, pt.z);
+        if (this.drawConfig.mode === 'text') {
+          const text = prompt('Digite o texto a ser escrito nesta posição da mesa:');
+          if (text && text.trim()) {
+            this.drawTextOnTable(uv.x, uv.y, text.trim(), this.drawConfig.color, this.drawConfig.size, true);
+          }
+          return;
+        }
         this.drawConfig.isDrawing = true;
         this.drawConfig.startUV = uv;
         this.drawConfig.lastUV = uv;
@@ -2421,12 +2520,13 @@ window.App = {
 
       if (e.key === '1') this.setTool('grab');
       else if (e.key === '2') this.setTool('ruler');
-      else if (e.key === '3') this.setTool('draw');
-      else if (e.key === '4') this.setTool('fog');
-      else if (e.key === '5') this.setTool('ping');
-      else if (e.key === '6') this.setTool('pin');
-      else if (e.key === '7') this.setTool('laser');
-      else if (e.key === '8') this.setTool('aoe');
+      else if (e.key === '3') { this.setTool('draw'); this.setDrawMode('pen'); }
+      else if (e.key === '4' || e.key.toLowerCase() === 'b') { this.setTool('draw'); this.setDrawMode('eraser'); }
+      else if (e.key === '5') this.setTool('fog');
+      else if (e.key === '6') this.setTool('ping');
+      else if (e.key === '7') this.setTool('pin');
+      else if (e.key === '8') this.setTool('laser');
+      else if (e.key === '9') this.setTool('aoe');
       else if (e.key.toLowerCase() === 'x') {
         const pt = this.getTableIntersection(this.camState.lastMouseX, this.camState.lastMouseY);
         if (pt && window.Effects3D) {
@@ -2595,14 +2695,29 @@ window.App = {
   },
 
   setTool(toolName) {
-    this.activeTool = toolName;
-    if (toolName !== 'ruler') this.stopRuler();
-    if (toolName !== 'aoe' && window.Effects3D) {
+    if (toolName === 'eraser') {
+      this.activeTool = 'draw';
+      this.setDrawMode('eraser');
+    } else {
+      this.activeTool = toolName;
+      if (toolName === 'draw') {
+        this.setDrawMode(this.drawConfig.mode === 'eraser' ? 'pen' : (this.drawConfig.mode || 'pen'));
+      }
+    }
+
+    if (this.activeTool !== 'ruler') this.stopRuler();
+    if (this.activeTool !== 'aoe' && window.Effects3D) {
       window.Effects3D.hideAoECursorPreview();
     }
 
     document.querySelectorAll('.icon-btn[data-tool]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.tool === toolName);
+      if (btn.dataset.tool === 'draw') {
+        btn.classList.toggle('active', this.activeTool === 'draw' && this.drawConfig.mode !== 'eraser');
+      } else if (btn.dataset.tool === 'eraser') {
+        btn.classList.toggle('active', this.activeTool === 'draw' && this.drawConfig.mode === 'eraser');
+      } else {
+        btn.classList.toggle('active', btn.dataset.tool === this.activeTool);
+      }
     });
 
     const subBar = document.getElementById('sub-toolbar');
@@ -2611,13 +2726,13 @@ window.App = {
     const aoeControls = document.getElementById('sub-aoe-controls');
     const laserControls = document.getElementById('sub-laser-controls');
 
-    if (toolName === 'draw' || toolName === 'fog' || toolName === 'aoe' || toolName === 'laser') {
+    if (this.activeTool === 'draw' || this.activeTool === 'fog' || this.activeTool === 'aoe' || this.activeTool === 'laser') {
       subBar.classList.add('visible');
-      if (drawControls) drawControls.style.display = toolName === 'draw' ? 'flex' : 'none';
-      if (fogControls) fogControls.style.display = toolName === 'fog' ? 'flex' : 'none';
-      if (aoeControls) aoeControls.style.display = toolName === 'aoe' ? 'flex' : 'none';
-      if (laserControls) laserControls.style.display = toolName === 'laser' ? 'flex' : 'none';
-      if (toolName === 'aoe' && window.Effects3D) {
+      if (drawControls) drawControls.style.display = this.activeTool === 'draw' ? 'flex' : 'none';
+      if (fogControls) fogControls.style.display = this.activeTool === 'fog' ? 'flex' : 'none';
+      if (aoeControls) aoeControls.style.display = this.activeTool === 'aoe' ? 'flex' : 'none';
+      if (laserControls) laserControls.style.display = this.activeTool === 'laser' ? 'flex' : 'none';
+      if (this.activeTool === 'aoe' && window.Effects3D) {
         window.Effects3D.setAoETemplate(
           window.Effects3D.aoeTemplate.type || 'circle',
           window.Effects3D.aoeTemplate.radiusMeters || 6,
@@ -2972,7 +3087,7 @@ window.App = {
   onNetworkMessage(msg) {
     // Enforce GM player lock on Host side as well
     if (window.Multiplayer.isHost && this.mapConfig.playersLocked && msg.senderId && msg.senderId !== window.Multiplayer.myId) {
-      const blockedTypes = ['piece_drag', 'piece_update', 'piece_delete', 'draw_stroke', 'draw_clear', 'dice_throw', 'dice_clear'];
+      const blockedTypes = ['piece_drag', 'piece_update', 'piece_delete', 'draw_stroke', 'draw_text', 'draw_clear', 'dice_throw', 'dice_clear'];
       if (blockedTypes.includes(msg.type)) {
         return;
       }
@@ -3062,6 +3177,9 @@ window.App = {
         break;
       case 'draw_stroke':
         this.drawStrokeOnTable(msg.u1, msg.v1, msg.u2, msg.v2, msg.mode, msg.color, msg.size, false);
+        break;
+      case 'draw_text':
+        this.drawTextOnTable(msg.u, msg.v, msg.text, msg.color, msg.fontSize || msg.size, false);
         break;
       case 'draw_clear':
         this.clearTableDrawings(false);
