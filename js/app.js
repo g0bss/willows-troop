@@ -541,6 +541,7 @@ window.App = {
       metalness: 0.04
     });
     this.mapMesh = new THREE.Mesh(mapGeo, this.mapMat);
+    this.mapMesh.position.y = 0.004;
     this.mapMesh.receiveShadow = true;
     this.mapMesh.name = 'mapSurface';
     this.tableGroup.add(this.mapMesh);
@@ -687,9 +688,9 @@ window.App = {
     slab.receiveShadow = true;
     this.tableFrameGroup.add(slab);
 
-    // Subtle inner felt/leather border lip around the battlemap
+    // Subtle inner felt/leather border lip below the battlemap surface (top at -0.02, below mapMesh at +0.004)
     const innerLip = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.16, d + 0.4), trimMat);
-    innerLip.position.y = -0.07;
+    innerLip.position.y = -0.10;
     this.tableFrameGroup.add(innerLip);
 
     const rimThickness = 1.35;

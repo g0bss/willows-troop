@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Willow's Troop</title>
   <link rel="icon" type="image/jpeg" href="assets/frog-druid-logo.jpg" />
-  <link rel="stylesheet" href="css/styles.css?v=4.2" />
+  <link rel="stylesheet" href="css/styles.css?v=4.3" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
@@ -226,9 +226,6 @@
       <button class="icon-btn" id="btn-sound-toggle" onclick="SoundEngine.toggleMute()" title="Som Ativado (Clique para Silenciar)">
         <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
       </button>
-      <button class="icon-btn" id="btn-toggle-combat" onclick="CombatTracker.toggleOpen()" title="Ordem de Iniciativa & Combate">
-        <svg viewBox="0 0 24 24"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M14.5 6.5L18 3h3v3l-3.5 3.5"/><path d="M5 19l4-4"/></svg>
-      </button>
       <button class="icon-btn" id="btn-open-handout" onclick="document.getElementById('handout-modal').classList.add('open')" title="Mostrar Ilustração / Pista na Tela de Todos">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       </button>
@@ -269,29 +266,58 @@
     </div>
   </div>
 
-  <!-- TOP-CENTER RETRACTABLE COMBAT & INITIATIVE TRACKER (Manual Name + Initiative Entry) -->
-  <div id="turn-tracker-container">
-    <div class="turn-tracker-bar">
-      <div class="turn-tracker-header">
-        <span id="turn-tracker-round" class="round-badge">Rodada 1</span>
-        <input type="text" id="combat-add-name" placeholder="Nome (ex: Goblin, Willow)" style="width:155px; height:28px; font-size:12px;"
+  <!-- RIGHT-SIDE COMPACT INITIATIVE BUTTON & EXPANDABLE VERTICAL STRIPED TABLE -->
+  <button id="initiative-compact-tab" onclick="CombatTracker.toggleOpen(true)" title="Abrir Tabela de Iniciativa & Combate">
+    <svg viewBox="0 0 24 24"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M14.5 6.5L18 3h3v3l-3.5 3.5"/><path d="M5 19l4-4"/></svg>
+    <span>Iniciativa</span>
+    <span id="combat-compact-badge" class="round-badge" style="display:none;">R1</span>
+  </button>
+
+  <aside id="turn-tracker-container">
+    <div class="init-panel-card">
+      <div class="init-panel-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" stroke-width="2"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M14.5 6.5L18 3h3v3l-3.5 3.5"/><path d="M5 19l4-4"/></svg>
+          <span class="init-panel-title">Iniciativa</span>
+          <span id="turn-tracker-round" class="round-badge">Rodada 1</span>
+        </div>
+        <button class="turn-tracker-close" onclick="CombatTracker.toggleOpen(false)" title="Recolher tabela de iniciativa">✕</button>
+      </div>
+
+      <div class="init-add-bar" id="turn-tracker-add-form">
+        <input type="text" id="combat-add-name" placeholder="Nome (ex: Goblin, Willow)" style="flex:1; min-width:0;"
           onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" />
-        <input type="number" id="combat-add-init" placeholder="Inic." value="15" style="width:58px; height:28px; font-size:12px; text-align:center;"
+        <input type="number" id="combat-add-init" placeholder="Inic." value="15" style="width:54px; text-align:center;"
           title="Valor da Iniciativa" onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" />
-        <button class="btn btn-primary btn-sm" onclick="CombatTracker.addManualCombatant()" title="Adicionar à Ordem de Iniciativa">+ Adicionar</button>
-        <button class="btn btn-sm" onclick="CombatTracker.pullPiecesFromTable(true)" title="Importar peças da mesa">Da Mesa</button>
-        <button class="btn btn-danger btn-sm" onclick="CombatTracker.clearCombatants()" title="Limpar lista de iniciativa">Limpar</button>
+        <button class="btn btn-primary btn-sm" onclick="CombatTracker.addManualCombatant()" title="Adicionar à lista">+ Add</button>
       </div>
 
-      <div class="turn-tracker-nav">
-        <button class="icon-btn-sm" onclick="CombatTracker.prevTurn()" title="Turno Anterior">◀</button>
-        <div id="turn-tracker-list" class="turn-tracker-cards"></div>
-        <button class="btn btn-primary btn-sm" onclick="CombatTracker.nextTurn()" title="Próximo Turno">Próximo ▶</button>
+      <div class="init-table-scroll">
+        <table class="init-vertical-table">
+          <thead>
+            <tr>
+              <th style="width:36px; text-align:center;">#</th>
+              <th>Personagem / Inimigo</th>
+              <th style="width:58px; text-align:center;">Inic.</th>
+              <th style="width:28px;"></th>
+            </tr>
+          </thead>
+          <tbody id="turn-tracker-list"></tbody>
+        </table>
       </div>
 
-      <button class="turn-tracker-close" onclick="CombatTracker.toggleOpen()" title="Fechar rastreador">✕</button>
+      <div class="init-panel-footer">
+        <div style="display:flex; gap:6px; width:100%;">
+          <button class="btn btn-sm" style="flex:1" onclick="CombatTracker.prevTurn()" title="Turno Anterior">◀ Anterior</button>
+          <button class="btn btn-primary btn-sm" style="flex:1.4" onclick="CombatTracker.nextTurn()" title="Próximo Turno">Próximo Turno ▶</button>
+        </div>
+        <div style="display:flex; gap:6px; width:100%;">
+          <button class="btn btn-sm" style="flex:1" onclick="CombatTracker.pullPiecesFromTable(false)" title="Importar miniaturas que estão na mesa">Puxar da Mesa</button>
+          <button class="btn btn-danger btn-sm" style="flex:1" onclick="CombatTracker.clearCombatants()" title="Limpar toda a lista">Limpar</button>
+        </div>
+      </div>
     </div>
-  </div>
+  </aside>
 
   <!-- LEFT VERTICAL ICON DOCK (Clean SVG Vector Icons + Hover Tooltips) -->
   <nav id="left-tool-dock">
@@ -1090,14 +1116,14 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=4.2"></script>
-  <script src="js/effects.js?v=4.2"></script>
-  <script src="js/combat.js?v=4.2"></script>
-  <script src="js/maps.js?v=4.2"></script>
-  <script src="js/models3d.js?v=4.2"></script>
-  <script src="js/dice3d.js?v=4.2"></script>
-  <script src="js/multiplayer.js?v=4.2"></script>
-  <script src="js/app.js?v=4.2"></script>
+  <script src="js/audio.js?v=4.3"></script>
+  <script src="js/effects.js?v=4.3"></script>
+  <script src="js/combat.js?v=4.3"></script>
+  <script src="js/maps.js?v=4.3"></script>
+  <script src="js/models3d.js?v=4.3"></script>
+  <script src="js/dice3d.js?v=4.3"></script>
+  <script src="js/multiplayer.js?v=4.3"></script>
+  <script src="js/app.js?v=4.3"></script>
 
   <script>
     function switchDrawerTab(tabId, el) {

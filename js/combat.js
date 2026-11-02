@@ -1,7 +1,7 @@
 // ============================================================================
-// WILLOW'S TROOP - COMBAT & INITIATIVE TRACKER ENGINE
+// WILLOW'S TROOP - RIGHT-SIDE VERTICAL INITIATIVE TABLE ENGINE
+// Compact toggle button on the right + expandable vertical striped table
 // Direct manual entry: GM types Character/Enemy Name + Initiative Number
-// Automatically sorts descending, tracks rounds & turns, and syncs to all players
 // ============================================================================
 
 window.CombatTracker = {
@@ -13,15 +13,20 @@ window.CombatTracker = {
   palette: ['#68a378', '#3b82f6', '#c94a4a', '#d99b26', '#a855f7', '#06b6d4', '#ec4899', '#f97316'],
 
   init() {
+    this.syncOpenVisibility();
     this.renderUI();
   },
 
-  toggleOpen() {
-    this.isOpen = !this.isOpen;
-    const bar = document.getElementById('turn-tracker-container');
-    const btn = document.getElementById('btn-toggle-combat');
-    if (bar) bar.classList.toggle('visible', this.isOpen);
-    if (btn) btn.classList.toggle('active', this.isOpen);
+  syncOpenVisibility() {
+    const panel = document.getElementById('turn-tracker-container');
+    const compactBtn = document.getElementById('initiative-compact-tab');
+    if (panel) panel.classList.toggle('visible', this.isOpen);
+    if (compactBtn) compactBtn.classList.toggle('panel-open', this.isOpen);
+  },
+
+  toggleOpen(forceState) {
+    this.isOpen = typeof forceState === 'boolean' ? forceState : !this.isOpen;
+    this.syncOpenVisibility();
     this.renderUI();
     if (window.Multiplayer?.isHost) {
       this.broadcastState();
@@ -29,7 +34,7 @@ window.CombatTracker = {
     if (this.isOpen) {
       setTimeout(() => {
         document.getElementById('combat-add-name')?.focus();
-      }, 100);
+      }, 80);
     }
   },
 
@@ -70,7 +75,6 @@ window.CombatTracker = {
     });
 
     nameInput.value = '';
-    initInput.value = '';
     nameInput.focus();
 
     this.sortCombatants();
@@ -79,6 +83,45 @@ window.CombatTracker = {
     if (window.Multiplayer) {
       this.broadcastState();
     }
+  },
+
+  // Optional helper if GM wants to import existing tokens on the table
+  pullPiecesFromTable(clearExisting = false) {
+    if (!window.App) return;
+    if (window.App.isPlayerActionBlocked && window.App.isPlayerActionBlocked(true)) return;
+    if (clearExisting) {
+      this.combatants = [];
+      this.round = 1;
+      this.currentTurn = 0;
+    }
+
+    let added = 0;
+    window.App.pieces.forEach((p) => {
+      if (p.style === 'prop' || p.style === 'pin') return;
+      const exists = this.combatants.find(c => c.pieceId === p.id || c.name.toLowerCase() === (p.name || '').toLowerCase());
+      if (!exists) {
+        const roll = Math.floor(Math.random() * 20) + 1;
+        this.combatants.push({
+          id: 'c_' + p.id,
+          pieceId: p.id,
+          name: p.name || ' Combatente',
+          color: p.color || '#4d7c5b',
+          initiative: roll
+        });
+        added++;
+      }
+    });
+
+    this.sortCombatants();
+    this.renderUI();
+    this.broadcastState();
+    if (added > 0 && window.App) {
+      window.App.showToast(`${added} peça(s) importada(s) da mesa.`);
+    }
+  },
+
+  clearCombatants() {
+    this.clearCombat();
   },
 
   sortCombatants() {
@@ -238,11 +281,7 @@ window.CombatTracker = {
     this.currentTurn = state.currentTurn || 0;
     this.combatants = state.combatants || [];
 
-    const bar = document.getElementById('turn-tracker-container');
-    const btn = document.getElementById('btn-toggle-combat');
-    if (bar) bar.classList.toggle('visible', this.isOpen);
-    if (btn) btn.classList.toggle('active', this.isOpen);
-
+    this.syncOpenVisibility();
     this.highlightActiveCombatantPiece();
     this.renderUI();
   },
@@ -258,38 +297,50 @@ window.CombatTracker = {
   renderUI() {
     const listEl = document.getElementById('turn-tracker-list');
     const roundEl = document.getElementById('turn-tracker-round');
-    const formEl = document.getElementById('turn-tracker-add-form');
+    const compactBadgeEl = document.getElementById('combat-compact-badge');
     if (!listEl) return;
 
     if (roundEl) roundEl.textContent = `Rodada ${this.round}`;
-    if (formEl) {
-      const isGM = !window.Multiplayer || window.Multiplayer.isHost || window.Multiplayer.myRole === 'gm';
-      formEl.style.display = isGM ? 'flex' : 'none';
+
+    // Update the compact button badge on the right side
+    if (compactBadgeEl) {
+      if (this.combatants.length > 0) {
+        const active = this.combatants[this.currentTurn] || this.combatants[0];
+        compactBadgeEl.textContent = `R${this.round} · ${active.name}`;
+        compactBadgeEl.style.display = 'inline-block';
+      } else {
+        compactBadgeEl.style.display = 'none';
+      }
     }
 
     if (this.combatants.length === 0) {
-      listEl.innerHTML = `<span style="font-size:11.5px; color:var(--text-secondary); padding:4px 8px; white-space:nowrap;">Digite o nome e a iniciativa ao lado para adicionar à fila.</span>`;
+      listEl.innerHTML = `
+        <tr class="init-empty-row">
+          <td colspan="4">Nenhum combatente na lista.<br/>Digite o <strong>Nome</strong> e a <strong>Iniciativa</strong> acima para adicionar.</td>
+        </tr>
+      `;
       return;
     }
 
     listEl.innerHTML = this.combatants.map((c, idx) => {
       const isActive = idx === this.currentTurn;
-      const initials = (c.name || '?').slice(0, 2).toUpperCase();
+      const posLabel = isActive ? '▶' : `${idx + 1}º`;
 
       return `
-        <div class="turn-card ${isActive ? 'active' : ''}" onclick="CombatTracker.selectCombatantTurn(${idx})" title="Clique para definir turno / focar">
-          <div style="width:22px; height:22px; border-radius:50%; background:${c.color || '#4d7c5b'}; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; flex-shrink:0;">
-            ${this.escapeHtml(initials)}
-          </div>
-          <div class="turn-card-info">
-            <span class="turn-card-name">${this.escapeHtml(c.name)}</span>
-          </div>
-          <div class="turn-card-init" title="Valor da Iniciativa">
-            <input type="number" value="${c.initiative}" style="width:38px; text-align:center; font-size:11.5px; font-weight:700; padding:2px; background:#12171d; border:1px solid var(--border-muted); border-radius:4px; color:#fde68a;"
-              onchange="CombatTracker.setCombatantInitiative('${c.id}', this.value)" onclick="event.stopPropagation()" />
-          </div>
-          <button class="turn-card-del" onclick="event.stopPropagation(); CombatTracker.removeCombatant('${c.id}')" title="Remover da iniciativa">✕</button>
-        </div>
+        <tr class="init-table-row ${isActive ? 'active' : ''}" onclick="CombatTracker.selectCombatantTurn(${idx})" title="Clique para marcar a vez deste combatente">
+          <td class="init-col-pos">${posLabel}</td>
+          <td class="init-col-name">
+            <span class="init-color-dot" style="background:${c.color || '#68a378'}"></span>
+            <span class="init-name-text">${this.escapeHtml(c.name)}</span>
+          </td>
+          <td class="init-col-val" onclick="event.stopPropagation()">
+            <input type="number" class="init-val-input" value="${c.initiative}"
+              onchange="CombatTracker.setCombatantInitiative('${c.id}', this.value)" />
+          </td>
+          <td class="init-col-del" onclick="event.stopPropagation()">
+            <button class="turn-card-del" onclick="CombatTracker.removeCombatant('${c.id}')" title="Remover">✕</button>
+          </td>
+        </tr>
       `;
     }).join('');
   }
