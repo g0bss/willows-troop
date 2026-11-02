@@ -154,6 +154,17 @@ window.App = {
     this.populateCatalogThumbnails();
     this.renderSavedCustomMaps();
 
+    if (window.SoundEngine) {
+      window.SoundEngine.init();
+      window.SoundEngine.updateMuteButtonUI();
+    }
+    if (window.CombatTracker) {
+      window.CombatTracker.init();
+    }
+    if (window.Effects3D) {
+      window.Effects3D.init(this.scene);
+    }
+
     window.DiceRoller3D.init(this.scene, (rollResult) => {
       this.onDiceRollFinished(rollResult);
     });
@@ -828,6 +839,7 @@ window.App = {
       transform: this.mapConfig.transform,
       grid: this.mapConfig.grid,
       fogEnabled: this.mapConfig.fogEnabled,
+      weather: window.Effects3D ? window.Effects3D.weather : 'none',
       playersLocked: !!this.mapConfig.playersLocked,
       gmCam: window.Multiplayer?.isHost ? this.getSerializedCamState() : this.hostCamState
     };
@@ -1784,6 +1796,10 @@ window.App = {
     this.scene.add(group);
     this.activePings.push({ group, ring, beam, age: 0 });
 
+    if (window.SoundEngine) {
+      window.SoundEngine.playPingSound();
+    }
+
     if (broadcast) {
       window.Multiplayer.broadcast({
         type: 'ping_3d',
@@ -1827,6 +1843,10 @@ window.App = {
       `<strong>${this.escapeHtml(playerName)}</strong> rolou <strong>${formula}</strong>:${detail}${tag}`,
       isCrit20 ? 'crit-success' : (isCrit1 ? 'crit-fail' : 'roll-msg')
     );
+
+    if (window.SoundEngine) {
+      window.SoundEngine.playChime(isCrit20, isCrit1);
+    }
   },
 
   getTableIntersection(clientX, clientY) {
@@ -1938,6 +1958,20 @@ window.App = {
 
       const pt = this.getTableIntersection(e.clientX, e.clientY);
       if (!pt) return;
+
+      if (this.activeTool === 'laser' || this.camState.keys['KeyX']) {
+        if (window.Effects3D) {
+          window.Effects3D.addLaserPoint(window.Multiplayer.myId, pt.x, pt.z, window.Multiplayer.myColor, true);
+        }
+        return;
+      }
+
+      if (this.activeTool === 'aoe') {
+        if (window.Effects3D) {
+          window.Effects3D.updateAoEPosition(pt.x, pt.z, true);
+        }
+        return;
+      }
 
       if (e.altKey || this.activeTool === 'ping') {
         this.spawnPing3D(pt.x, pt.z, window.Multiplayer.myColor, window.Multiplayer.myName, true);
@@ -2076,6 +2110,18 @@ window.App = {
 
       const pt = this.getTableIntersection(e.clientX, e.clientY);
       if (!pt) return;
+
+      if (this.activeTool === 'laser' || this.camState.keys['KeyX']) {
+        if (window.Effects3D) {
+          window.Effects3D.addLaserPoint(window.Multiplayer.myId, pt.x, pt.z, window.Multiplayer.myColor, true);
+        }
+      }
+
+      if (this.activeTool === 'aoe') {
+        if (window.Effects3D) {
+          window.Effects3D.updateAoEPosition(pt.x, pt.z, false);
+        }
+      }
 
       const now = performance.now();
       if (now - this.lastCursorSend > 75) {
@@ -2280,6 +2326,14 @@ window.App = {
       else if (e.key === '4') this.setTool('fog');
       else if (e.key === '5') this.setTool('ping');
       else if (e.key === '6') this.setTool('pin');
+      else if (e.key === '7') this.setTool('laser');
+      else if (e.key === '8') this.setTool('aoe');
+      else if (e.key.toLowerCase() === 'x') {
+        const pt = this.getTableIntersection(this.camState.lastMouseX, this.camState.lastMouseY);
+        if (pt && window.Effects3D) {
+          window.Effects3D.addLaserPoint(window.Multiplayer.myId, pt.x, pt.z, window.Multiplayer.myColor, true);
+        }
+      }
       else if (e.key.toLowerCase() === 't') this.toggleTopDownCamera();
       else if (e.key.toLowerCase() === 'g') {
         this.mapConfig.grid.snap = !this.mapConfig.grid.snap;
@@ -2446,13 +2500,22 @@ window.App = {
     const subBar = document.getElementById('sub-toolbar');
     const drawControls = document.getElementById('sub-draw-controls');
     const fogControls = document.getElementById('sub-fog-controls');
+    const aoeControls = document.getElementById('sub-aoe-controls');
 
-    if (toolName === 'draw' || toolName === 'fog') {
+    if (toolName === 'draw' || toolName === 'fog' || toolName === 'aoe') {
       subBar.classList.add('visible');
-      drawControls.style.display = toolName === 'draw' ? 'flex' : 'none';
-      fogControls.style.display = toolName === 'fog' ? 'flex' : 'none';
+      if (drawControls) drawControls.style.display = toolName === 'draw' ? 'flex' : 'none';
+      if (fogControls) fogControls.style.display = toolName === 'fog' ? 'flex' : 'none';
+      if (aoeControls) aoeControls.style.display = toolName === 'aoe' ? 'flex' : 'none';
+      if (toolName === 'aoe' && window.Effects3D && !window.Effects3D.aoeTemplate.active) {
+        window.Effects3D.setAoETemplate('circle', 6, '#ea580c', true);
+      }
     } else {
       subBar.classList.remove('visible');
+    }
+
+    if (toolName === 'laser') {
+      this.showToast('Ponteiro Laser ativado! Mova o mouse na mesa ou segure a tecla X.');
     }
   },
 
@@ -2694,6 +2757,11 @@ window.App = {
     this.mapConfig.transform = s.transform || { zoom: 1, panX: 0, panY: 0, tableScale: 1, autoFitTable: true };
     this.mapConfig.grid = Object.assign(this.mapConfig.grid, s.grid || {});
     this.mapConfig.fogEnabled = !!s.fogEnabled;
+    if (s.weather && window.Effects3D) {
+      window.Effects3D.setWeather(s.weather, false);
+      const sel = document.getElementById('weather-select');
+      if (sel) sel.value = s.weather;
+    }
     if (typeof s.playersLocked === 'boolean') {
       this.mapConfig.playersLocked = s.playersLocked;
     }
@@ -2898,6 +2966,39 @@ window.App = {
       case 'ping_3d':
         this.spawnPing3D(msg.x, msg.z, msg.color, msg.senderName, false);
         break;
+      case 'laser_point':
+        if (window.Effects3D) {
+          window.Effects3D.addLaserPoint(msg.senderId, msg.x, msg.z, msg.color, false);
+        }
+        break;
+      case 'aoe_template_update':
+        if (window.Effects3D && msg.state) {
+          window.Effects3D.setAoETemplate(msg.state.type, msg.state.radiusMeters, msg.state.color, false);
+          window.Effects3D.updateAoEPosition(msg.state.x, msg.state.z, false);
+        }
+        break;
+      case 'aoe_template_move':
+        if (window.Effects3D) {
+          window.Effects3D.updateAoEPosition(msg.x, msg.z, false);
+        }
+        break;
+      case 'aoe_template_clear':
+        if (window.Effects3D) {
+          window.Effects3D.clearAoETemplate(false);
+        }
+        break;
+      case 'weather_sync':
+        if (window.Effects3D && msg.weather) {
+          window.Effects3D.setWeather(msg.weather, false);
+          const sel = document.getElementById('weather-select');
+          if (sel) sel.value = msg.weather;
+        }
+        break;
+      case 'combat_tracker_sync':
+        if (window.CombatTracker && msg.state) {
+          window.CombatTracker.applyRemoteState(msg.state);
+        }
+        break;
       case 'cursor_3d':
         this.updateRemoteCursor(msg.senderId, msg.senderName, msg.senderColor, msg.x, msg.z);
         break;
@@ -3008,11 +3109,16 @@ window.App = {
       if (fp.mesh.position.y <= 0) {
         fp.mesh.position.y = 0;
         if (Math.abs(fp.vy) > 0.06) {
+          if (window.SoundEngine) window.SoundEngine.playPieceDrop();
           fp.vy = -fp.vy * 0.38;
         } else {
           this.fallingPieces.splice(i, 1);
         }
       }
+    }
+
+    if (window.Effects3D) {
+      window.Effects3D.update(dt);
     }
 
     window.DiceRoller3D.update(dt, this.tableWidth / 2, this.tableDepth / 2);

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Willow's Troop</title>
   <link rel="icon" type="image/jpeg" href="assets/frog-druid-logo.jpg" />
-  <link rel="stylesheet" href="css/styles.css?v=3.5" />
+  <link rel="stylesheet" href="css/styles.css?v=4.0" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
@@ -210,6 +210,12 @@
       <button class="icon-btn" onclick="App.camState.target.set(0,0,0); App.updateCameraTransform();" title="Centralizar Mesa (Espaço)">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
       </button>
+      <button class="icon-btn" id="btn-sound-toggle" onclick="SoundEngine.toggleMute()" title="Som Ativado (Clique para Silenciar)">
+        <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-toggle-combat" onclick="CombatTracker.toggleOpen()" title="Ordem de Iniciativa & Combate">
+        <svg viewBox="0 0 24 24"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M14.5 6.5L18 3h3v3l-3.5 3.5"/><path d="M5 19l4-4"/></svg>
+      </button>
       <button class="icon-btn" id="btn-toggle-labels" onclick="App.showAllLabels = !App.showAllLabels; this.classList.toggle('active', App.showAllLabels);" title="Mostrar/Ocultar Todos os Nomes">
         <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
       </button>
@@ -247,6 +253,25 @@
     </div>
   </div>
 
+  <!-- TOP-CENTER RETRACTABLE COMBAT & INITIATIVE TRACKER -->
+  <div id="turn-tracker-container">
+    <div class="turn-tracker-bar">
+      <div class="turn-tracker-header">
+        <span id="turn-tracker-round" class="round-badge">Rodada 1</span>
+        <button class="btn btn-sm" onclick="CombatTracker.pullPiecesFromTable(true)" title="Importar miniaturas da mesa">Puxar da Mesa</button>
+        <button class="btn btn-sm" onclick="CombatTracker.rollAllInitiative()" title="Rolar iniciativa d20 para todos">Rolar Iniciativas</button>
+      </div>
+
+      <div class="turn-tracker-nav">
+        <button class="icon-btn-sm" onclick="CombatTracker.prevTurn()" title="Turno Anterior">◀</button>
+        <div id="turn-tracker-list" class="turn-tracker-cards"></div>
+        <button class="btn btn-primary btn-sm" onclick="CombatTracker.nextTurn()" title="Próximo Turno (ou Espaço)">Próximo ▶</button>
+      </div>
+
+      <button class="turn-tracker-close" onclick="CombatTracker.toggleOpen()" title="Fechar rastreador">✕</button>
+    </div>
+  </div>
+
   <!-- LEFT VERTICAL ICON DOCK (Clean SVG Vector Icons + Hover Tooltips) -->
   <nav id="left-tool-dock">
     <button class="icon-btn active" data-tool="grab" data-tooltip="Mover / Pegar Peças (1)" onclick="App.setTool('grab')">
@@ -266,6 +291,12 @@
     </button>
     <button class="icon-btn" data-tool="pin" data-tooltip="Inserir Marcador 3D (6)" onclick="App.setTool('pin')">
       <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    </button>
+    <button class="icon-btn" data-tool="laser" data-tooltip="Ponteiro Laser 3D (Atalho: X ou 7)" onclick="App.setTool('laser')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+    </button>
+    <button class="icon-btn" data-tool="aoe" data-tooltip="Área de Efeito / Molde de Magia (8)" onclick="App.setTool('aoe')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
     </button>
 
     <div class="dock-divider"></div>
@@ -303,6 +334,20 @@
       <input type="range" min="25" max="180" value="90" style="width:80px" oninput="App.fogConfig.brushSize = Number(this.value)" />
       <button class="btn" onclick="App.toggleFogOfWar(true); App.fillFogCanvas(true); Multiplayer.broadcast({type:'fog_reset', coverAll:true});">Cobrir Tudo</button>
       <button class="btn" onclick="App.fillFogCanvas(false); Multiplayer.broadcast({type:'fog_reset', coverAll:false});">Revelar Tudo</button>
+    </div>
+
+    <div id="sub-aoe-controls" style="display:none; align-items:center; gap:8px;">
+      <span>Molde:</span>
+      <select id="aoe-type-select" style="width:115px" onchange="Effects3D.setAoETemplate(this.value, document.getElementById('aoe-radius-range').value, document.getElementById('aoe-color-picker').value, true)">
+        <option value="circle">Esfera / Raio</option>
+        <option value="cone">Cone (60°)</option>
+        <option value="line">Linha / Raio</option>
+      </select>
+      <label style="font-size:11.5px;">Raio: <strong id="aoe-radius-val">6m</strong></label>
+      <input type="range" id="aoe-radius-range" min="1.5" max="18" step="1.5" value="6" style="width:80px"
+        oninput="document.getElementById('aoe-radius-val').textContent = this.value + 'm'; Effects3D.setAoETemplate(document.getElementById('aoe-type-select').value, this.value, document.getElementById('aoe-color-picker').value, true);" />
+      <input type="color" id="aoe-color-picker" value="#ea580c" onchange="Effects3D.setAoETemplate(document.getElementById('aoe-type-select').value, document.getElementById('aoe-radius-range').value, this.value, true)" />
+      <button class="btn btn-danger btn-sm" onclick="Effects3D.clearAoETemplate(true)">Remover</button>
     </div>
   </div>
 
@@ -623,7 +668,7 @@
       </div>
 
       <div class="section-box">
-        <div class="section-title">Ambiente & Névoa</div>
+        <div class="section-title">Ambiente, Clima & Névoa</div>
         <div class="form-row">
           <label>Iluminação:</label>
           <select id="lighting-select" style="width:155px" onchange="App.applyLightingMood(this.value, true)">
@@ -631,6 +676,15 @@
             <option value="day">Luz do Dia</option>
             <option value="night">Noturno</option>
             <option value="dungeon">Penumbra</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Clima na Mesa:</label>
+          <select id="weather-select" style="width:155px" onchange="Effects3D.setWeather(this.value, true)">
+            <option value="none">Desativado</option>
+            <option value="embers">Brasas de Fogo</option>
+            <option value="rain">Chuva na Mesa</option>
+            <option value="snow">Neve Suave</option>
           </select>
         </div>
         <div class="form-row">
@@ -922,11 +976,14 @@
     </div>
   </div>
 
-  <script src="js/maps.js?v=3.5"></script>
-  <script src="js/models3d.js?v=3.5"></script>
-  <script src="js/dice3d.js?v=3.5"></script>
-  <script src="js/multiplayer.js?v=3.5"></script>
-  <script src="js/app.js?v=3.5"></script>
+  <script src="js/audio.js?v=4.0"></script>
+  <script src="js/effects.js?v=4.0"></script>
+  <script src="js/combat.js?v=4.0"></script>
+  <script src="js/maps.js?v=4.0"></script>
+  <script src="js/models3d.js?v=4.0"></script>
+  <script src="js/dice3d.js?v=4.0"></script>
+  <script src="js/multiplayer.js?v=4.0"></script>
+  <script src="js/app.js?v=4.0"></script>
 
   <script>
     function switchDrawerTab(tabId, el) {

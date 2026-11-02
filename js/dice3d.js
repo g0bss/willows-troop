@@ -426,6 +426,10 @@ window.DiceRoller3D = {
       broadcastCallback(packet);
     }
 
+    if (window.SoundEngine) {
+      window.SoundEngine.playDiceShake();
+    }
+
     while (this.activeDice.length > 18) {
       const oldest = this.activeDice.shift();
       this.destroyDieObject(oldest);
@@ -502,6 +506,10 @@ window.DiceRoller3D = {
 
     const newVal = Math.floor(Math.random() * dieObj.sides) + 1;
     this.updateDieResultVisual(dieObj, newVal);
+
+    if (window.SoundEngine) {
+      window.SoundEngine.playDiceImpact(0.7);
+    }
 
     dieObj.mesh.position.set(targetX, 2.6, targetZ);
     dieObj.vx = Math.max(-0.35, Math.min(0.35, vx + (Math.random() - 0.5) * 0.12));
@@ -586,6 +594,10 @@ window.DiceRoller3D = {
         }
 
         if (d.mesh.position.y < floorY) {
+          const impactSpeed = Math.abs(d.vy);
+          if (impactSpeed > 0.05 && window.SoundEngine) {
+            window.SoundEngine.playDiceImpact(impactSpeed * 3);
+          }
           d.mesh.position.y = floorY;
           d.vy = -d.vy * 0.54;
           d.vx *= 0.78;
@@ -599,10 +611,16 @@ window.DiceRoller3D = {
         if (Math.abs(d.mesh.position.x) > tableHalfW - margin) {
           d.mesh.position.x = Math.sign(d.mesh.position.x) * (tableHalfW - margin);
           d.vx = -d.vx * 0.7;
+          if (Math.abs(d.vx) > 0.06 && window.SoundEngine) {
+            window.SoundEngine.playDiceImpact(0.4);
+          }
         }
         if (Math.abs(d.mesh.position.z) > tableHalfD - margin) {
           d.mesh.position.z = Math.sign(d.mesh.position.z) * (tableHalfD - margin);
           d.vz = -d.vz * 0.7;
+          if (Math.abs(d.vz) > 0.06 && window.SoundEngine) {
+            window.SoundEngine.playDiceImpact(0.4);
+          }
         }
 
         const speed = Math.abs(d.vx) + Math.abs(d.vy) + Math.abs(d.vz);
