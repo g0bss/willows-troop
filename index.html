@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Willow's Troop</title>
   <link rel="icon" type="image/jpeg" href="assets/frog-druid-logo.jpg" />
-  <link rel="stylesheet" href="css/styles.css?v=4.5" />
+  <link rel="stylesheet" href="css/styles.css?v=4.6" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
@@ -287,6 +287,7 @@
       <div class="init-add-bar" id="turn-tracker-add-form">
         <input type="text" id="combat-add-name" placeholder="Nome (ex: Goblin, Willow)" style="flex:1; min-width:0;"
           onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" />
+        <button class="btn btn-sm" type="button" style="padding:2px 8px; font-size:12px;" onclick="document.getElementById('combat-add-name').value = App.generateRandomName();" title="Gerar nome aleatório de personagem/monstro">🎲</button>
         <input type="number" id="combat-add-init" placeholder="Inic." value="15" style="width:64px; height:32px; font-size:14px; font-weight:700; text-align:center;"
           title="Valor da Iniciativa" onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" onfocus="this.select()" />
         <button class="btn btn-primary btn-sm" onclick="CombatTracker.addManualCombatant()" title="Adicionar à lista">+ Add</button>
@@ -462,7 +463,10 @@
       <div class="section-box">
         <div class="section-title">Nova Miniatura Personalizada</div>
         <div class="form-col">
-          <label>Nome:</label>
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Nome:</span>
+            <button class="btn btn-sm" type="button" style="padding:1px 6px; font-size:11px;" onclick="document.getElementById('custom-piece-name').value = App.generateRandomName();" title="Gerar nome aleatório">🎲 Aleatório</button>
+          </label>
           <input type="text" id="custom-piece-name" placeholder="Nome do personagem" value="Aventureiro" />
         </div>
 
@@ -860,11 +864,23 @@
             <input type="number" id="insp-ac" oninput="App.updateSelectedPieceFromInspector()" />
           </div>
         </div>
-        <div class="form-row" style="gap:4px;">
-          <button class="btn btn-danger" style="flex:1" onclick="App.adjustSelectedHp(-5)">-5</button>
-          <button class="btn btn-danger" style="flex:1" onclick="App.adjustSelectedHp(-1)">-1</button>
-          <button class="btn" style="flex:1" onclick="App.adjustSelectedHp(1)">+1</button>
-          <button class="btn" style="flex:1" onclick="App.adjustSelectedHp(5)">+5</button>
+        <div class="form-row" style="gap:4px; margin-top:6px;">
+          <button class="btn btn-danger btn-sm" style="flex:1" onclick="App.adjustSelectedHp(-10)" title="Causar 10 de dano">-10</button>
+          <button class="btn btn-danger btn-sm" style="flex:1" onclick="App.adjustSelectedHp(-5)" title="Causar 5 de dano">-5</button>
+          <button class="btn btn-danger btn-sm" style="flex:1" onclick="App.adjustSelectedHp(-1)" title="Causar 1 de dano">-1</button>
+          <button class="btn btn-sm" style="flex:1" onclick="App.adjustSelectedHp(1)" title="Curar 1 PV">+1</button>
+          <button class="btn btn-sm" style="flex:1" onclick="App.adjustSelectedHp(5)" title="Curar 5 PV">+5</button>
+          <button class="btn btn-sm" style="flex:1" onclick="App.adjustSelectedHp(10)" title="Curar 10 PV">+10</button>
+        </div>
+        <div class="form-row" style="gap:6px; margin-top:6px;">
+          <button class="btn btn-sm" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px;" onclick="App.focusCameraOnPiece(App.selectedPieceId)" title="Focar câmera nesta miniatura (Atalho: Tecla F)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10"/></svg>
+            <span>Focar (F)</span>
+          </button>
+          <button class="btn btn-sm" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px;" onclick="App.togglePiecePOV()" title="Alternar visão em 1ª Pessoa dos olhos da miniatura">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>1ª Pessoa</span>
+          </button>
         </div>
       </div>
 
@@ -894,11 +910,15 @@
         </div>
 
         <div id="insp-conditions" class="condition-grid">
-          <span class="cond-pill" data-cond="poisoned" onclick="App.toggleConditionOnSelected('poisoned')">Envenenado</span>
-          <span class="cond-pill" data-cond="burning" onclick="App.toggleConditionOnSelected('burning')">Em Chamas</span>
-          <span class="cond-pill" data-cond="stunned" onclick="App.toggleConditionOnSelected('stunned')">Atordoado</span>
-          <span class="cond-pill" data-cond="blessed" onclick="App.toggleConditionOnSelected('blessed')">Abençoado</span>
-          <span class="cond-pill" data-cond="invisible" onclick="App.toggleConditionOnSelected('invisible')">Oculto (Mestre)</span>
+          <span class="cond-pill" data-cond="bleeding" onclick="App.toggleConditionOnSelected('bleeding')">🩸 Sangrando</span>
+          <span class="cond-pill" data-cond="poisoned" onclick="App.toggleConditionOnSelected('poisoned')">☠️ Envenenado</span>
+          <span class="cond-pill" data-cond="burning" onclick="App.toggleConditionOnSelected('burning')">🔥 Em Chamas</span>
+          <span class="cond-pill" data-cond="stunned" onclick="App.toggleConditionOnSelected('stunned')">⚡ Atordoado</span>
+          <span class="cond-pill" data-cond="prone" onclick="App.toggleConditionOnSelected('prone')">💤 Caído</span>
+          <span class="cond-pill" data-cond="shielded" onclick="App.toggleConditionOnSelected('shielded')">🛡️ Protegido</span>
+          <span class="cond-pill" data-cond="marked" onclick="App.toggleConditionOnSelected('marked')">🎯 Marcado</span>
+          <span class="cond-pill" data-cond="blessed" onclick="App.toggleConditionOnSelected('blessed')">✨ Abençoado</span>
+          <span class="cond-pill" data-cond="invisible" onclick="App.toggleConditionOnSelected('invisible')">👁️ Oculto (Mestre)</span>
         </div>
       </div>
 
@@ -922,6 +942,14 @@
       <option value="4">4x</option>
       <option value="6">6x</option>
     </select>
+
+    <select id="dice-roll-mode" style="width:80px; height:32px; font-size:11.5px; font-weight:700; padding:2px;" title="Modo de Rolagem">
+      <option value="normal">Normal</option>
+      <option value="adv">Vantagem</option>
+      <option value="dis">Desvantagem</option>
+      <option value="secret">Secreta 🤫</option>
+    </select>
+    <input type="number" id="dice-mod-val" value="0" style="width:42px; height:32px; font-size:12.5px; font-weight:700; text-align:center;" title="Modificador / Bônus do teste (ex: +3, -1)" placeholder="+0" />
 
     <button class="dice-btn" onclick="rollTableDice(4)" title="Rolar d4">
       <svg viewBox="0 0 24 24"><polygon points="12 3 21 19 3 19"/></svg>
@@ -1143,14 +1171,14 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=4.5"></script>
-  <script src="js/effects.js?v=4.5"></script>
-  <script src="js/combat.js?v=4.5"></script>
-  <script src="js/maps.js?v=4.5"></script>
-  <script src="js/models3d.js?v=4.5"></script>
-  <script src="js/dice3d.js?v=4.5"></script>
-  <script src="js/multiplayer.js?v=4.5"></script>
-  <script src="js/app.js?v=4.5"></script>
+  <script src="js/audio.js?v=4.6"></script>
+  <script src="js/effects.js?v=4.6"></script>
+  <script src="js/combat.js?v=4.6"></script>
+  <script src="js/maps.js?v=4.6"></script>
+  <script src="js/models3d.js?v=4.6"></script>
+  <script src="js/dice3d.js?v=4.6"></script>
+  <script src="js/multiplayer.js?v=4.6"></script>
+  <script src="js/app.js?v=4.6"></script>
 
   <script>
     function switchDrawerTab(tabId, el) {
@@ -1321,11 +1349,21 @@
     function rollTableDice(sides) {
       if (App.isPlayerActionBlocked && App.isPlayerActionBlocked(true)) return;
       const count = Number(document.getElementById('dice-count-select').value) || 1;
-      const results = Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
+      const mode = document.getElementById('dice-roll-mode')?.value || 'normal';
+      const mod = Number(document.getElementById('dice-mod-val')?.value) || 0;
+
+      let actualCount = count;
+      if ((mode === 'adv' || mode === 'dis') && sides === 20) {
+        actualCount = 2;
+      }
+
+      const results = Array.from({ length: actualCount }, () => Math.floor(Math.random() * sides) + 1);
       const rollData = {
         sides,
-        count,
+        count: actualCount,
         results,
+        mode,
+        mod,
         playerName: Multiplayer.myName,
         playerColor: Multiplayer.myColor,
         diceColor: DiceRoller3D.myDiceColor

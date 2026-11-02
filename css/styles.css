@@ -952,6 +952,26 @@ input[type="color"] {
   color: var(--text-primary);
 }
 
+.cond-icon-badge {
+  display: inline-block;
+  font-size: 13px;
+  line-height: 1;
+  margin: 0 1px;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.85));
+}
+
+.floating-dmg-pop {
+  position: absolute;
+  pointer-events: none;
+  font-family: 'Cinzel', 'Segoe UI', system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.95), 0 2px 5px rgba(0, 0, 0, 0.9);
+  z-index: 120;
+  user-select: none;
+  letter-spacing: 0.5px;
+}
+
 /* MODALS */
 .modal-backdrop {
   position: fixed;

@@ -198,5 +198,46 @@ window.SoundEngine = {
     gain.connect(this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.35);
+  },
+
+  // Punchy physical impact thump for combat damage
+  playHit() {
+    if (!this.enabled) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(175, t);
+    osc.frequency.exponentialRampToValueAtTime(42, t + 0.18);
+    gain.gain.setValueAtTime(this.volume * 0.55, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.20);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.22);
+  },
+
+  // Uplifting chime arpeggio for healing and restorative magic
+  playHeal() {
+    if (!this.enabled) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+      const start = t + idx * 0.07;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(this.volume * 0.3, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.5);
+    });
   }
 };

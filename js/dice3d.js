@@ -493,7 +493,9 @@ window.DiceRoller3D = {
               results,
               total: results.reduce((a, b) => a + b, 0),
               playerName,
-              diceColor
+              diceColor,
+              mode: rollData.mode || 'normal',
+              mod: rollData.mod || 0
             });
           }
         }

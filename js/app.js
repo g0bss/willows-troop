@@ -136,6 +136,7 @@ window.App = {
   },
 
   fallingPieces: [],
+  floatingTexts: [],
   remoteCursors: new Map(),
   activePings: [],
   lastCursorSend: 0,
@@ -1063,9 +1064,23 @@ window.App = {
     const acHtml = (isGM && pieceData.ac) ? `<span class="ac-badge">CA ${pieceData.ac}</span>` : '';
     const invBadge = (isGM && isInvisible) ? `<span class="ac-badge" style="background:rgba(96,165,250,0.22); color:#93c5fd;">OCULTO</span>` : '';
 
+    const condMap = {
+      poisoned: '☠️',
+      burning: '🔥',
+      stunned: '⚡',
+      blessed: '✨',
+      invisible: '👁️',
+      bleeding: '🩸',
+      prone: '💤',
+      shielded: '🛡️',
+      marked: '🎯'
+    };
+    const condBadges = (pieceData.conditions || []).map(c => condMap[c] ? `<span class="cond-icon-badge" title="${c}">${condMap[c]}</span>` : '').join('');
+
     label.innerHTML = `
       <div class="name-tag" style="border-color: ${pieceData.color || 'rgba(255,255,255,0.2)'}">
         <span>${this.escapeHtml(pieceData.name || 'Peça')}</span>
+        ${condBadges}
         ${acHtml}
         ${invBadge}
       </div>
@@ -2010,15 +2025,37 @@ window.App = {
   },
 
   onDiceRollFinished(rollResult) {
-    const { sides, count, results, total, playerName } = rollResult;
+    const { sides, count, results, total, playerName, mode, mod } = rollResult;
+    const modifier = Number(mod) || 0;
+    const modStr = modifier !== 0 ? (modifier > 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`) : '';
+    const secretPrefix = mode === 'secret' ? '🤫 <em>[Secreta]</em> ' : '';
+
+    if ((mode === 'adv' || mode === 'dis') && sides === 20 && results.length >= 2) {
+      const isAdv = mode === 'adv';
+      const chosenVal = isAdv ? Math.max(results[0], results[1]) : Math.min(results[0], results[1]);
+      const modeText = isAdv ? ' com Vantagem' : ' com Desvantagem';
+      const isCrit20 = chosenVal === 20;
+      const isCrit1 = chosenVal === 1;
+      const finalTotal = chosenVal + modifier;
+      const tag = isCrit20 ? ' — <strong>💥 SUCESSO CRÍTICO!</strong>' : (isCrit1 ? ' — <strong>💀 FALHA CRÍTICA!</strong>' : '');
+
+      const msg = `${secretPrefix}<strong>${this.escapeHtml(playerName)}</strong> rolou <strong>d20${modeText}</strong>: [${results.join(', ')}] → Escolhe <strong>${chosenVal}</strong>${modStr} = <strong>${finalTotal}</strong>${tag}`;
+      this.addChatMessage(msg, isCrit20 ? 'crit-success' : (isCrit1 ? 'crit-fail' : 'roll-msg'));
+      if (window.SoundEngine) window.SoundEngine.playChime(isCrit20, isCrit1);
+      return;
+    }
+
+    const finalTotal = total + modifier;
     const isCrit20 = sides === 20 && results.includes(20);
     const isCrit1 = sides === 20 && results.includes(1);
     const formula = `${count}d${sides}`;
-    const detail = results.length > 1 ? ` [${results.join(', ')}] = <strong>${total}</strong>` : ` = <strong>${total}</strong>`;
-    const tag = isCrit20 ? ' — <strong>Crítico!</strong>' : (isCrit1 ? ' — <strong>Falha Crítica</strong>' : '');
+    const detail = results.length > 1
+      ? ` [${results.join(', ')}]${modStr} = <strong>${finalTotal}</strong>`
+      : (modifier !== 0 ? ` [${results[0]}]${modStr} = <strong>${finalTotal}</strong>` : ` = <strong>${finalTotal}</strong>`);
+    const tag = isCrit20 ? ' — <strong>💥 SUCESSO CRÍTICO!</strong>' : (isCrit1 ? ' — <strong>💀 FALHA CRÍTICA!</strong>' : '');
 
     this.addChatMessage(
-      `<strong>${this.escapeHtml(playerName)}</strong> rolou <strong>${formula}</strong>:${detail}${tag}`,
+      `${secretPrefix}<strong>${this.escapeHtml(playerName)}</strong> rolou <strong>${formula}</strong>:${detail}${tag}`,
       isCrit20 ? 'crit-success' : (isCrit1 ? 'crit-fail' : 'roll-msg')
     );
 
@@ -2509,6 +2546,15 @@ window.App = {
       this.updateCameraTransform();
     }, { passive: false });
 
+    window.addEventListener('dblclick', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+      const hitPieceId = this.pickPieceAtMouse(e.clientX, e.clientY);
+      if (hitPieceId) {
+        this.selectPiece(hitPieceId);
+        this.focusCameraOnPiece(hitPieceId);
+      }
+    });
+
     window.addEventListener('keydown', (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
 
@@ -2547,6 +2593,11 @@ window.App = {
       } else if (e.code === 'Space') {
         this.camState.target.set(0, 0, 0);
         this.updateCameraTransform();
+      } else if (e.code === 'KeyF') {
+        const targetId = this.selectedPieceId || this.hoveredPieceId;
+        if (targetId) {
+          this.focusCameraOnPiece(targetId);
+        }
       } else if (activeDieId && (e.key === 'Delete' || e.key === 'Backspace')) {
         if (this.isPlayerActionBlocked(true)) return;
         window.DiceRoller3D.removeDie(activeDieId, true);
@@ -2909,9 +2960,116 @@ window.App = {
     if (!this.selectedPieceId) return;
     const p = this.pieces.get(this.selectedPieceId);
     if (!p) return;
+    const oldHp = p.hp || 0;
     p.hp = Math.max(0, Math.min(p.maxHp || 999, (p.hp || 0) + delta));
-    document.getElementById('insp-hp').value = p.hp;
+    const actualDelta = p.hp - oldHp;
+    const hpInput = document.getElementById('insp-hp');
+    if (hpInput) hpInput.value = p.hp;
     this.addOrUpdatePiece(p, true);
+
+    const txt = actualDelta > 0 ? `+${actualDelta}` : `${actualDelta}`;
+    const col = actualDelta > 0 ? '#4ade80' : '#ef4444';
+    const mesh = this.pieceMeshes.get(p.id);
+    const posY = mesh ? mesh.position.y + 2.5 : 2.5;
+    this.spawnFloatingText(p.x, posY, p.z, txt, col);
+
+    if (window.SoundEngine) {
+      if (actualDelta < 0) window.SoundEngine.playHit?.();
+      else window.SoundEngine.playHeal?.();
+    }
+
+    if (window.Multiplayer) {
+      window.Multiplayer.broadcast({
+        type: 'floating_dmg',
+        x: p.x,
+        y: posY,
+        z: p.z,
+        text: txt,
+        color: col
+      });
+    }
+
+    if (actualDelta < 0) {
+      this.addChatMessage(`💥 <strong>${this.escapeHtml(p.name)}</strong> sofreu <strong>${Math.abs(actualDelta)}</strong> de dano (PV: ${p.hp}/${p.maxHp})`, 'crit-fail');
+    } else if (actualDelta > 0) {
+      this.addChatMessage(`💚 <strong>${this.escapeHtml(p.name)}</strong> curou <strong>+${actualDelta}</strong> PV (PV: ${p.hp}/${p.maxHp})`, 'crit-success');
+    }
+  },
+
+  spawnFloatingText(worldX, worldY, worldZ, text, color = '#ef4444') {
+    const container = document.getElementById('labels-container');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = 'floating-dmg-pop';
+    el.style.color = color;
+    el.textContent = text;
+    container.appendChild(el);
+
+    if (!this.floatingTexts) this.floatingTexts = [];
+    this.floatingTexts.push({
+      el,
+      pos: new THREE.Vector3(worldX, worldY, worldZ),
+      startTime: performance.now(),
+      duration: 1350
+    });
+  },
+
+  focusCameraOnPiece(pieceId) {
+    if (!pieceId) return;
+    const p = this.pieces.get(pieceId);
+    if (!p) return;
+    this.camState.target.set(p.x, 0, p.z);
+    this.camState.spherical.radius = Math.max(12, Math.min(22, this.camState.spherical.radius));
+    this.camState.spherical.phi = 0.85;
+    this.camState.isTopDown = false;
+    document.getElementById('btn-cam-topdown')?.classList.remove('active');
+    this.updateCameraTransform();
+    this.showToast(`Câmera focada em: ${p.name || 'Miniatura'}`);
+  },
+
+  togglePiecePOV() {
+    if (!this.selectedPieceId) return;
+    const p = this.pieces.get(this.selectedPieceId);
+    const mesh = this.pieceMeshes.get(this.selectedPieceId);
+    if (!p || !mesh) return;
+
+    if (this.camState.isPOV) {
+      this.camState.isPOV = false;
+      this.camState.spherical.radius = 24;
+      this.camState.spherical.phi = 0.85;
+      this.camState.spherical.theta = 0;
+      this.camState.target.set(p.x, 0, p.z);
+      this.updateCameraTransform();
+      this.showToast('Visão de Mesa restaurada.');
+      return;
+    }
+
+    this.camState.isPOV = true;
+    this.camState.isTopDown = false;
+    document.getElementById('btn-cam-topdown')?.classList.remove('active');
+
+    const rot = p.rotation || 0;
+    const eyeHeight = 1.6 * (p.sizeScale || 1) + (p.elevation || 0);
+    this.camera.position.set(p.x, eyeHeight, p.z);
+
+    const lookDist = 12;
+    const targetX = p.x + Math.sin(rot) * lookDist;
+    const targetZ = p.z + Math.cos(rot) * lookDist;
+    this.camState.target.set(targetX, eyeHeight - 0.4, targetZ);
+    this.camera.lookAt(this.camState.target);
+
+    this.showToast(`Visão em 1ª Pessoa: ${p.name || 'Personagem'} (Arraste ou clique novamente para sair)`);
+  },
+
+  generateRandomName(category = 'any') {
+    const names = {
+      hero: ['Valeros', 'Elowen', 'Morgran', 'Sylas', 'Lyra', 'Theron', 'Kaelen', 'Branwen', 'Aurelia', 'Durn', 'Althea', 'Gareth'],
+      npc: ['Alden', 'Cedric', 'Miranda', 'Rowan', 'Dario', 'Helena', 'Bartholomew', 'Tobias', 'Greta', 'Livia', 'Milo', 'Kael'],
+      monster: ['Goblin Ladino', 'Goblin Xamã', 'Orc Guerreiro', 'Lobo Sombrio', 'Urso-Coruja', 'Esqueleto Lanceiro', 'Zumbi Fétido', 'Aranha Gigante', 'Carniçal', 'Bandido Armado', 'Cultista Sinistro'],
+      boss: ['Dragão Carmesim', 'Lorde Vampiro', 'Nigromante Malakar', 'Golem Rúnico', 'Demônio do Abismo', 'Quimera Real']
+    };
+    const pool = category !== 'any' && names[category] ? names[category] : [...names.hero, ...names.npc, ...names.monster];
+    return pool[Math.floor(Math.random() * pool.length)];
   },
 
   toggleConditionOnSelected(cond) {
@@ -3154,6 +3312,13 @@ window.App = {
           if (this.selectedPieceId === msg.piece.id) {
             this.populateInspectorUI();
           }
+        }
+        break;
+      case 'floating_dmg':
+        this.spawnFloatingText(msg.x, msg.y, msg.z, msg.text, msg.color);
+        if (window.SoundEngine) {
+          if (String(msg.text).startsWith('-')) window.SoundEngine.playHit?.();
+          else window.SoundEngine.playHeal?.();
         }
         break;
       case 'piece_delete':
@@ -3461,6 +3626,32 @@ window.App = {
         c.label.style.display = 'none';
       }
     });
+
+    // 3D Floating Damage & Healing Numbers animation
+    if (this.floatingTexts && this.floatingTexts.length > 0) {
+      const now = performance.now();
+      for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+        const ft = this.floatingTexts[i];
+        const elapsed = now - ft.startTime;
+        if (elapsed > ft.duration) {
+          ft.el.remove();
+          this.floatingTexts.splice(i, 1);
+          continue;
+        }
+        const progress = elapsed / ft.duration;
+        const currentPos = ft.pos.clone().add(new THREE.Vector3(0, progress * 1.6, 0));
+        const screen = this.worldToScreen(currentPos);
+        if (screen.visible) {
+          ft.el.style.display = 'block';
+          ft.el.style.left = `${screen.x}px`;
+          ft.el.style.top = `${screen.y}px`;
+          ft.el.style.opacity = `${Math.max(0, 1 - Math.pow(progress, 1.8))}`;
+          ft.el.style.transform = `translate(-50%, -100%) scale(${1 + progress * 0.15})`;
+        } else {
+          ft.el.style.display = 'none';
+        }
+      }
+    }
 
     this.renderer.render(this.scene, this.camera);
   },
