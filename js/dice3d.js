@@ -414,6 +414,8 @@ window.DiceRoller3D = {
     const results = rollData.results || Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
     const playerName = rollData.playerName || 'Jogador';
     const diceColor = rollData.diceColor || this.myDiceColor || '#b91c1c';
+    const rollMode = rollData.mode || 'normal';
+    const rollMod = Number(rollData.mod) || 0;
 
     const packet = {
       sides,
@@ -421,6 +423,8 @@ window.DiceRoller3D = {
       results,
       playerName,
       diceColor,
+      mode: rollMode,
+      mod: rollMod,
       originX: rollData.originX !== undefined ? rollData.originX : (Math.random() - 0.5) * 6,
       originZ: rollData.originZ !== undefined ? rollData.originZ : 8
     };
@@ -494,8 +498,8 @@ window.DiceRoller3D = {
               total: results.reduce((a, b) => a + b, 0),
               playerName,
               diceColor,
-              mode: rollData.mode || 'normal',
-              mod: rollData.mod || 0
+              mode: rollMode,
+              mod: rollMod
             });
           }
         }

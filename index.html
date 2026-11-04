@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Willow's Troop</title>
   <link rel="icon" type="image/jpeg" href="assets/frog-druid-logo.jpg" />
-  <link rel="stylesheet" href="css/styles.css?v=4.6" />
+  <link rel="stylesheet" href="css/styles.css?v=4.7" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
@@ -180,8 +180,11 @@
               <option value="gothic">Catedral Gótica (360°)</option>
               <option value="sunset">Montanhas ao Pôr do Sol</option>
               <option value="night">Colinas sob o Luar (360°)</option>
+              <option value="custom">Minha imagem 360°</option>
               <option value="void">Estúdio Escuro (Padrão)</option>
             </select>
+            <button class="btn btn-sm" type="button" style="margin-top:6px; width:195px; justify-content:center;" onclick="document.getElementById('lobby-skybox-upload').click()">Importar imagem 360° do PC</button>
+            <input type="file" id="lobby-skybox-upload" accept="image/*" style="display:none" onchange="Effects3D.importPanoramaFile(this.files[0]); this.value='';" />
           </div>
         </div>
 
@@ -225,6 +228,9 @@
       </button>
       <button class="icon-btn" id="btn-sound-toggle" onclick="SoundEngine.toggleMute()" title="Som Ativado (Clique para Silenciar)">
         <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-music-toggle" onclick="MusicPlayer.toggleDrawer()" title="Trilha Sonora (Spotify)">
+        <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
       </button>
       <button class="icon-btn" id="btn-open-handout" onclick="document.getElementById('handout-modal').classList.add('open')" title="Mostrar Ilustração / Pista na Tela de Todos">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -287,7 +293,7 @@
       <div class="init-add-bar" id="turn-tracker-add-form">
         <input type="text" id="combat-add-name" placeholder="Nome (ex: Goblin, Willow)" style="flex:1; min-width:0;"
           onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" />
-        <button class="btn btn-sm" type="button" style="padding:2px 8px; font-size:12px;" onclick="document.getElementById('combat-add-name').value = App.generateRandomName();" title="Gerar nome aleatório de personagem/monstro">🎲</button>
+        <button class="btn btn-sm" type="button" style="padding:2px 8px; font-size:11px;" onclick="document.getElementById('combat-add-name').value = App.generateRandomName();" title="Sortear um nome aleatório">Sortear</button>
         <input type="number" id="combat-add-init" placeholder="Inic." value="15" style="width:64px; height:32px; font-size:14px; font-weight:700; text-align:center;"
           title="Valor da Iniciativa" onkeydown="if(event.key==='Enter') CombatTracker.addManualCombatant()" onfocus="this.select()" />
         <button class="btn btn-primary btn-sm" onclick="CombatTracker.addManualCombatant()" title="Adicionar à lista">+ Add</button>
@@ -465,7 +471,7 @@
         <div class="form-col">
           <label style="display:flex; justify-content:space-between; align-items:center;">
             <span>Nome:</span>
-            <button class="btn btn-sm" type="button" style="padding:1px 6px; font-size:11px;" onclick="document.getElementById('custom-piece-name').value = App.generateRandomName();" title="Gerar nome aleatório">🎲 Aleatório</button>
+            <button class="btn btn-sm" type="button" style="padding:1px 6px; font-size:11px;" onclick="document.getElementById('custom-piece-name').value = App.generateRandomName();" title="Sortear um nome aleatório">Sortear nome</button>
           </label>
           <input type="text" id="custom-piece-name" placeholder="Nome do personagem" value="Aventureiro" />
         </div>
@@ -779,13 +785,13 @@
             <option value="void">Estúdio Escuro (Preto)</option>
           </select>
         </div>
+        <button class="btn btn-sm" style="width:100%; justify-content:center;" onclick="document.getElementById('skybox-upload-input').click()">Importar imagem 360° do PC</button>
+        <input type="file" id="skybox-upload-input" accept="image/*" style="display:none" onchange="Effects3D.importPanoramaFile(this.files[0]); this.value='';" />
         <div id="skybox-custom-row" class="form-col" style="display:none; gap:6px;">
           <div class="form-row">
-            <input type="text" id="skybox-custom-url" placeholder="Cole URL de imagem panorâmica..." />
+            <input type="text" id="skybox-custom-url" placeholder="Ou cole o link de uma imagem panorâmica..." />
             <button class="btn btn-sm" onclick="Effects3D.setSkybox('custom', document.getElementById('skybox-custom-url').value.trim(), true)">Aplicar</button>
           </div>
-          <button class="btn btn-sm" onclick="document.getElementById('skybox-upload-input').click()">Enviar Imagem de Fundo do PC...</button>
-          <input type="file" id="skybox-upload-input" accept="image/*" style="display:none" onchange="handleSkyboxUploadFile(this)" />
         </div>
         <div class="form-row">
           <label>Iluminação:</label>
@@ -864,23 +870,14 @@
             <input type="number" id="insp-ac" oninput="App.updateSelectedPieceFromInspector()" />
           </div>
         </div>
-        <div class="form-row" style="gap:4px; margin-top:6px;">
-          <button class="btn btn-danger btn-sm" style="flex:1" onclick="App.adjustSelectedHp(-10)" title="Causar 10 de dano">-10</button>
-          <button class="btn btn-danger btn-sm" style="flex:1" onclick="App.adjustSelectedHp(-5)" title="Causar 5 de dano">-5</button>
-          <button class="btn btn-danger btn-sm" style="flex:1" onclick="App.adjustSelectedHp(-1)" title="Causar 1 de dano">-1</button>
-          <button class="btn btn-sm" style="flex:1" onclick="App.adjustSelectedHp(1)" title="Curar 1 PV">+1</button>
-          <button class="btn btn-sm" style="flex:1" onclick="App.adjustSelectedHp(5)" title="Curar 5 PV">+5</button>
-          <button class="btn btn-sm" style="flex:1" onclick="App.adjustSelectedHp(10)" title="Curar 10 PV">+10</button>
+        <div class="hp-readout">
+          <div class="hp-readout-track"><div id="insp-hp-bar" class="hp-readout-fill"></div></div>
+          <span id="insp-hp-text" class="hp-readout-text">0 / 0</span>
         </div>
-        <div class="form-row" style="gap:6px; margin-top:6px;">
-          <button class="btn btn-sm" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px;" onclick="App.focusCameraOnPiece(App.selectedPieceId)" title="Focar câmera nesta miniatura (Atalho: Tecla F)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10"/></svg>
-            <span>Focar (F)</span>
-          </button>
-          <button class="btn btn-sm" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px;" onclick="App.togglePiecePOV()" title="Alternar visão em 1ª Pessoa dos olhos da miniatura">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-            <span>1ª Pessoa</span>
-          </button>
+        <div class="hp-apply-row">
+          <input type="number" id="insp-hp-delta" min="0" placeholder="Valor" onkeydown="if(event.key==='Enter') App.applyHpDelta(-1)" />
+          <button class="hp-apply-btn hp-damage" onclick="App.applyHpDelta(-1)">Dano</button>
+          <button class="hp-apply-btn hp-heal" onclick="App.applyHpDelta(1)">Cura</button>
         </div>
       </div>
 
@@ -909,22 +906,29 @@
           <label><input type="checkbox" id="insp-locked" onchange="App.updateSelectedPieceFromInspector()" /> Travar (L)</label>
         </div>
 
+      </div>
+
+      <div class="section-box">
+        <div class="section-title">Condições</div>
         <div id="insp-conditions" class="condition-grid">
-          <span class="cond-pill" data-cond="bleeding" onclick="App.toggleConditionOnSelected('bleeding')">🩸 Sangrando</span>
-          <span class="cond-pill" data-cond="poisoned" onclick="App.toggleConditionOnSelected('poisoned')">☠️ Envenenado</span>
-          <span class="cond-pill" data-cond="burning" onclick="App.toggleConditionOnSelected('burning')">🔥 Em Chamas</span>
-          <span class="cond-pill" data-cond="stunned" onclick="App.toggleConditionOnSelected('stunned')">⚡ Atordoado</span>
-          <span class="cond-pill" data-cond="prone" onclick="App.toggleConditionOnSelected('prone')">💤 Caído</span>
-          <span class="cond-pill" data-cond="shielded" onclick="App.toggleConditionOnSelected('shielded')">🛡️ Protegido</span>
-          <span class="cond-pill" data-cond="marked" onclick="App.toggleConditionOnSelected('marked')">🎯 Marcado</span>
-          <span class="cond-pill" data-cond="blessed" onclick="App.toggleConditionOnSelected('blessed')">✨ Abençoado</span>
-          <span class="cond-pill" data-cond="invisible" onclick="App.toggleConditionOnSelected('invisible')">👁️ Oculto (Mestre)</span>
+          <span class="cond-pill" data-cond="bleeding" style="--cond:#c0504d" onclick="App.toggleConditionOnSelected('bleeding')">Sangrando</span>
+          <span class="cond-pill" data-cond="poisoned" style="--cond:#7fa650" onclick="App.toggleConditionOnSelected('poisoned')">Envenenado</span>
+          <span class="cond-pill" data-cond="burning" style="--cond:#d9822b" onclick="App.toggleConditionOnSelected('burning')">Em chamas</span>
+          <span class="cond-pill" data-cond="stunned" style="--cond:#c9b037" onclick="App.toggleConditionOnSelected('stunned')">Atordoado</span>
+          <span class="cond-pill" data-cond="prone" style="--cond:#8a8f98" onclick="App.toggleConditionOnSelected('prone')">Caído</span>
+          <span class="cond-pill" data-cond="shielded" style="--cond:#4f8fc4" onclick="App.toggleConditionOnSelected('shielded')">Protegido</span>
+          <span class="cond-pill" data-cond="marked" style="--cond:#b05fa3" onclick="App.toggleConditionOnSelected('marked')">Marcado</span>
+          <span class="cond-pill" data-cond="blessed" style="--cond:#d4bb6a" onclick="App.toggleConditionOnSelected('blessed')">Abençoado</span>
+          <span class="cond-pill" data-cond="invisible" style="--cond:#6b7a99" onclick="App.toggleConditionOnSelected('invisible')">Oculto (Mestre)</span>
         </div>
       </div>
 
-      <div class="form-row">
-        <button class="btn" style="flex:1" onclick="App.duplicateSelectedPiece()">Duplicar</button>
-        <button class="btn btn-danger" style="flex:1" onclick="App.deletePiece(App.selectedPieceId, true)">Remover</button>
+      <div class="inspector-footer">
+        <button class="link-btn" onclick="App.focusCameraOnPiece(App.selectedPieceId)" title="Atalho: F">Centralizar câmera</button>
+        <button class="link-btn" onclick="App.togglePiecePOV()">Ver pelos olhos</button>
+        <span class="inspector-footer-spacer"></span>
+        <button class="link-btn" onclick="App.duplicateSelectedPiece()">Duplicar</button>
+        <button class="link-btn link-btn-danger" onclick="App.deletePiece(App.selectedPieceId, true)">Remover</button>
       </div>
     </div>
   </aside>
@@ -947,7 +951,7 @@
       <option value="normal">Normal</option>
       <option value="adv">Vantagem</option>
       <option value="dis">Desvantagem</option>
-      <option value="secret">Secreta 🤫</option>
+      <option value="secret">Secreta (só eu vejo)</option>
     </select>
     <input type="number" id="dice-mod-val" value="0" style="width:42px; height:32px; font-size:12.5px; font-weight:700; text-align:center;" title="Modificador / Bônus do teste (ex: +3, -1)" placeholder="+0" />
 
@@ -995,6 +999,34 @@
     <div style="display:flex; padding:6px; gap:5px; border-top:1px solid var(--border-muted);">
       <input type="text" id="chat-input" placeholder="Mensagem ou /r 2d20..." onkeydown="if(event.key==='Enter') sendChatInput()" />
       <button class="btn btn-primary" onclick="sendChatInput()">Enviar</button>
+    </div>
+  </div>
+
+  <!-- TRILHA SONORA (Spotify) -->
+  <div id="music-drawer" class="closed">
+    <div class="drawer-header" style="padding:8px 12px;">
+      <h3>Trilha sonora</h3>
+      <button class="btn" style="padding:2px 6px" onclick="MusicPlayer.toggleDrawer(false)">✕</button>
+    </div>
+    <div class="music-body">
+      <div class="music-input-row">
+        <input type="text" id="music-link-input" placeholder="Cole o link de uma playlist do Spotify" onkeydown="if(event.key==='Enter') MusicPlayer.submitInput()" />
+        <button class="btn btn-primary btn-sm" onclick="MusicPlayer.submitInput()">Carregar</button>
+      </div>
+      <div id="music-status" class="music-status"></div>
+      <div id="music-empty" class="music-empty">
+        No Spotify, abra uma playlist, clique em <strong>Compartilhar</strong> e depois em <strong>Copiar link</strong>. Cole aqui.
+      </div>
+      <div id="music-embed-host" style="display:none;"></div>
+      <div class="music-actions">
+        <button class="link-btn" id="music-expand-btn" onclick="MusicPlayer.toggleExpanded()">Ver lista de faixas</button>
+        <button class="link-btn" onclick="MusicPlayer.saveCurrent()">Salvar nos favoritos</button>
+      </div>
+      <div class="section-title" style="margin-top:4px;">Favoritos</div>
+      <div id="music-saved-list" class="music-saved-list"></div>
+      <label id="music-share-row" class="music-opt"><input type="checkbox" checked onchange="MusicPlayer.shareWithTable = this.checked" /> Enviar a trilha para os jogadores</label>
+      <label id="music-follow-row" class="music-opt" style="display:none;"><input type="checkbox" checked onchange="MusicPlayer.followGm = this.checked" /> Acompanhar play/pause do Mestre</label>
+      <div class="music-note">Cada pessoa ouve pela própria conta do Spotify. Entre no Spotify neste navegador (conta Premium toca as músicas inteiras; sem login, apenas trechos de 30 segundos).</div>
     </div>
   </div>
 
@@ -1171,14 +1203,15 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=4.6"></script>
-  <script src="js/effects.js?v=4.6"></script>
-  <script src="js/combat.js?v=4.6"></script>
-  <script src="js/maps.js?v=4.6"></script>
-  <script src="js/models3d.js?v=4.6"></script>
-  <script src="js/dice3d.js?v=4.6"></script>
-  <script src="js/multiplayer.js?v=4.6"></script>
-  <script src="js/app.js?v=4.6"></script>
+  <script src="js/audio.js?v=4.7"></script>
+  <script src="js/music.js?v=4.7"></script>
+  <script src="js/effects.js?v=4.7"></script>
+  <script src="js/combat.js?v=4.7"></script>
+  <script src="js/maps.js?v=4.7"></script>
+  <script src="js/models3d.js?v=4.7"></script>
+  <script src="js/dice3d.js?v=4.7"></script>
+  <script src="js/multiplayer.js?v=4.7"></script>
+  <script src="js/app.js?v=4.7"></script>
 
   <script>
     function switchDrawerTab(tabId, el) {
@@ -1257,14 +1290,7 @@
     }
 
     function handleSkyboxUploadFile(input) {
-      const file = input.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        Effects3D.setSkybox('custom', e.target.result, true);
-        App.showToast('Cenário 360° personalizado aplicado!');
-      };
-      reader.readAsDataURL(file);
+      Effects3D.importPanoramaFile(input.files?.[0]);
       input.value = '';
     }
 
@@ -1309,8 +1335,10 @@
         return;
       }
       if (mode === 'skybox') {
-        Effects3D.setSkybox('custom', dataUrl, true);
-        App.showToast('Cenário de fundo 360° atualizado!');
+        Effects3D.compressPanoramaDataUrl(dataUrl).then(r => {
+          Effects3D.setSkybox('custom', r.url, true);
+          App.showToast('Cenário de fundo 360° atualizado!');
+        });
         return;
       }
       if (mode === 'map') {
@@ -1368,6 +1396,11 @@
         playerColor: Multiplayer.myColor,
         diceColor: DiceRoller3D.myDiceColor
       };
+      if (mode === 'secret') {
+        // Rolagem secreta: só quem rolou vê os dados e o resultado (não é enviada pela rede)
+        DiceRoller3D.throwDice(rollData, null);
+        return;
+      }
       DiceRoller3D.throwDice(rollData, (packet) => {
         Multiplayer.broadcast({
           type: 'dice_throw',

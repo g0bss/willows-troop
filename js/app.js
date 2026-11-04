@@ -923,6 +923,7 @@ window.App = {
       fogEnabled: this.mapConfig.fogEnabled,
       weather: window.Effects3D ? window.Effects3D.weather : 'none',
       skybox: window.Effects3D ? window.Effects3D.currentSkybox : 'tavern',
+      musicUri: (window.MusicPlayer && window.MusicPlayer.shareWithTable) ? (window.MusicPlayer.currentUri || '') : '',
       customSkyboxUrl: (window.Effects3D?.currentSkybox === 'custom' && window.Effects3D?.customSkyboxUrl && window.Effects3D.customSkyboxUrl.length < 180000)
         ? window.Effects3D.customSkyboxUrl
         : '',
@@ -1065,17 +1066,20 @@ window.App = {
     const invBadge = (isGM && isInvisible) ? `<span class="ac-badge" style="background:rgba(96,165,250,0.22); color:#93c5fd;">OCULTO</span>` : '';
 
     const condMap = {
-      poisoned: '☠️',
-      burning: '🔥',
-      stunned: '⚡',
-      blessed: '✨',
-      invisible: '👁️',
-      bleeding: '🩸',
-      prone: '💤',
-      shielded: '🛡️',
-      marked: '🎯'
+      poisoned: ['Veneno', '#7fa650'],
+      burning: ['Chamas', '#d9822b'],
+      stunned: ['Atordoado', '#c9b037'],
+      blessed: ['Abençoado', '#d4bb6a'],
+      invisible: ['Oculto', '#6b7a99'],
+      bleeding: ['Sangrando', '#c0504d'],
+      prone: ['Caído', '#8a8f98'],
+      shielded: ['Protegido', '#4f8fc4'],
+      marked: ['Marcado', '#b05fa3']
     };
-    const condBadges = (pieceData.conditions || []).map(c => condMap[c] ? `<span class="cond-icon-badge" title="${c}">${condMap[c]}</span>` : '').join('');
+    const condBadges = (pieceData.conditions || [])
+      .filter(c => condMap[c] && !(c === 'invisible' && !isGM))
+      .map(c => `<span class="cond-tag" style="--cond:${condMap[c][1]}">${condMap[c][0]}</span>`)
+      .join('');
 
     label.innerHTML = `
       <div class="name-tag" style="border-color: ${pieceData.color || 'rgba(255,255,255,0.2)'}">
@@ -2028,40 +2032,66 @@ window.App = {
     const { sides, count, results, total, playerName, mode, mod } = rollResult;
     const modifier = Number(mod) || 0;
     const modStr = modifier !== 0 ? (modifier > 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`) : '';
-    const secretPrefix = mode === 'secret' ? '🤫 <em>[Secreta]</em> ' : '';
+    const secretPrefix = mode === 'secret' ? '<em>[Secreta]</em> ' : '';
+    const safeName = this.escapeHtml(playerName);
+
+    let finalTotal;
+    let chatHtml;
+    let bannerFormula;
+    let isCrit20 = false;
+    let isCrit1 = false;
 
     if ((mode === 'adv' || mode === 'dis') && sides === 20 && results.length >= 2) {
       const isAdv = mode === 'adv';
-      const chosenVal = isAdv ? Math.max(results[0], results[1]) : Math.min(results[0], results[1]);
-      const modeText = isAdv ? ' com Vantagem' : ' com Desvantagem';
-      const isCrit20 = chosenVal === 20;
-      const isCrit1 = chosenVal === 1;
-      const finalTotal = chosenVal + modifier;
-      const tag = isCrit20 ? ' — <strong>💥 SUCESSO CRÍTICO!</strong>' : (isCrit1 ? ' — <strong>💀 FALHA CRÍTICA!</strong>' : '');
-
-      const msg = `${secretPrefix}<strong>${this.escapeHtml(playerName)}</strong> rolou <strong>d20${modeText}</strong>: [${results.join(', ')}] → Escolhe <strong>${chosenVal}</strong>${modStr} = <strong>${finalTotal}</strong>${tag}`;
-      this.addChatMessage(msg, isCrit20 ? 'crit-success' : (isCrit1 ? 'crit-fail' : 'roll-msg'));
-      if (window.SoundEngine) window.SoundEngine.playChime(isCrit20, isCrit1);
-      return;
+      const chosen = isAdv ? Math.max(results[0], results[1]) : Math.min(results[0], results[1]);
+      isCrit20 = chosen === 20;
+      isCrit1 = chosen === 1;
+      finalTotal = chosen + modifier;
+      const modeText = isAdv ? 'com vantagem' : 'com desvantagem';
+      bannerFormula = `d20 ${modeText} [${results.join(', ')}] → ${chosen}${modStr}`;
+      chatHtml = `${secretPrefix}<strong>${safeName}</strong> rolou <strong>d20 ${modeText}</strong>: [${results.join(', ')}] → ${chosen}${modStr} = <strong>${finalTotal}</strong>`;
+    } else {
+      finalTotal = total + modifier;
+      isCrit20 = sides === 20 && count === 1 && results[0] === 20;
+      isCrit1 = sides === 20 && count === 1 && results[0] === 1;
+      const formula = `${count}d${sides}`;
+      const list = results.length > 1 ? `[${results.join(', ')}]` : `[${results[0]}]`;
+      bannerFormula = `${formula} ${list}${modStr}`;
+      chatHtml = `${secretPrefix}<strong>${safeName}</strong> rolou <strong>${formula}</strong>: ${list}${modStr} = <strong>${finalTotal}</strong>`;
     }
 
-    const finalTotal = total + modifier;
-    const isCrit20 = sides === 20 && results.includes(20);
-    const isCrit1 = sides === 20 && results.includes(1);
-    const formula = `${count}d${sides}`;
-    const detail = results.length > 1
-      ? ` [${results.join(', ')}]${modStr} = <strong>${finalTotal}</strong>`
-      : (modifier !== 0 ? ` [${results[0]}]${modStr} = <strong>${finalTotal}</strong>` : ` = <strong>${finalTotal}</strong>`);
-    const tag = isCrit20 ? ' — <strong>💥 SUCESSO CRÍTICO!</strong>' : (isCrit1 ? ' — <strong>💀 FALHA CRÍTICA!</strong>' : '');
+    if (isCrit20) chatHtml += ' — <strong>Sucesso crítico</strong>';
+    if (isCrit1) chatHtml += ' — <strong>Falha crítica</strong>';
 
-    this.addChatMessage(
-      `${secretPrefix}<strong>${this.escapeHtml(playerName)}</strong> rolou <strong>${formula}</strong>:${detail}${tag}`,
-      isCrit20 ? 'crit-success' : (isCrit1 ? 'crit-fail' : 'roll-msg')
-    );
+    this.addChatMessage(chatHtml, isCrit20 ? 'crit-success' : (isCrit1 ? 'crit-fail' : 'roll-msg'));
+    this.showRollResultBanner(playerName, bannerFormula, finalTotal, isCrit20 ? 'crit' : (isCrit1 ? 'fail' : ''), mode === 'secret');
 
     if (window.SoundEngine) {
       window.SoundEngine.playChime(isCrit20, isCrit1);
     }
+  },
+
+  showRollResultBanner(playerName, formula, total, tone = '', isSecret = false) {
+    let stack = document.getElementById('roll-banner-stack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'roll-banner-stack';
+      document.body.appendChild(stack);
+    }
+    const el = document.createElement('div');
+    el.className = `roll-banner ${tone}`;
+    el.innerHTML = `
+      <div class="roll-banner-who">${this.escapeHtml(playerName)}${isSecret ? ' <span class="roll-banner-secret">secreta</span>' : ''}</div>
+      <div class="roll-banner-main">
+        <span class="roll-banner-formula">${this.escapeHtml(formula)}</span>
+        <span class="roll-banner-total">${total}</span>
+      </div>`;
+    stack.appendChild(el);
+    while (stack.children.length > 3) stack.firstElementChild.remove();
+    setTimeout(() => {
+      el.classList.add('leaving');
+      setTimeout(() => el.remove(), 400);
+    }, 5200);
   },
 
   getTableIntersection(clientX, clientY) {
@@ -2934,6 +2964,33 @@ window.App = {
       const cond = pill.dataset.cond;
       pill.classList.toggle('active', (p.conditions || []).includes(cond));
     });
+    this.refreshInspectorHpReadout(p);
+  },
+
+  refreshInspectorHpReadout(p) {
+    const piece = p || (this.selectedPieceId ? this.pieces.get(this.selectedPieceId) : null);
+    if (!piece) return;
+    const bar = document.getElementById('insp-hp-bar');
+    const txt = document.getElementById('insp-hp-text');
+    const max = Number(piece.maxHp) || 0;
+    const cur = Number(piece.hp) || 0;
+    const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
+    if (bar) {
+      bar.style.width = `${pct}%`;
+      bar.style.background = pct > 50 ? '#4d9e6d' : (pct > 25 ? '#d99b26' : '#c94a4a');
+    }
+    if (txt) txt.textContent = `${cur} / ${max}`;
+  },
+
+  applyHpDelta(sign) {
+    const input = document.getElementById('insp-hp-delta');
+    const raw = Number(input?.value);
+    const amount = Number.isFinite(raw) && raw > 0 ? raw : 1;
+    this.adjustSelectedHp(sign * amount);
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
   },
 
   updateSelectedPieceFromInspector() {
@@ -2954,6 +3011,7 @@ window.App = {
     p.locked = document.getElementById('insp-locked').checked;
 
     this.addOrUpdatePiece(p, true);
+    this.refreshInspectorHpReadout(p);
   },
 
   adjustSelectedHp(delta) {
@@ -2990,10 +3048,11 @@ window.App = {
     }
 
     if (actualDelta < 0) {
-      this.addChatMessage(`💥 <strong>${this.escapeHtml(p.name)}</strong> sofreu <strong>${Math.abs(actualDelta)}</strong> de dano (PV: ${p.hp}/${p.maxHp})`, 'crit-fail');
+      this.addChatMessage(`<strong>${this.escapeHtml(p.name)}</strong> sofreu <strong>${Math.abs(actualDelta)}</strong> de dano (PV ${p.hp}/${p.maxHp})`, 'crit-fail');
     } else if (actualDelta > 0) {
-      this.addChatMessage(`💚 <strong>${this.escapeHtml(p.name)}</strong> curou <strong>+${actualDelta}</strong> PV (PV: ${p.hp}/${p.maxHp})`, 'crit-success');
+      this.addChatMessage(`<strong>${this.escapeHtml(p.name)}</strong> recuperou <strong>${actualDelta}</strong> PV (PV ${p.hp}/${p.maxHp})`, 'crit-success');
     }
+    this.refreshInspectorHpReadout(p);
   },
 
   spawnFloatingText(worldX, worldY, worldZ, text, color = '#ef4444') {
@@ -3157,6 +3216,9 @@ window.App = {
     }
     if (s.skybox && window.Effects3D) {
       window.Effects3D.setSkybox(s.skybox, s.customSkyboxUrl || '', false);
+    }
+    if (s.musicUri && window.MusicPlayer && !window.Multiplayer?.isHost && window.MusicPlayer.currentUri !== s.musicUri) {
+      window.MusicPlayer.loadUri(s.musicUri, false);
     }
     if (Array.isArray(s.placedAoEs) && window.Effects3D) {
       window.Effects3D.applySerializedPlacedAoEs(s.placedAoEs);
@@ -3404,6 +3466,11 @@ window.App = {
       case 'aoe_template_clear':
         if (window.Effects3D) {
           window.Effects3D.clearAoETemplate(false);
+        }
+        break;
+      case 'music_sync':
+        if (!window.Multiplayer.isHost && window.MusicPlayer) {
+          window.MusicPlayer.applyRemote(msg);
         }
         break;
       case 'skybox_sync':

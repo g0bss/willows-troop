@@ -99,8 +99,64 @@ window.Effects3D = {
 
     // Load default 360° panorama skybox so the table isn't floating in a black void
     const savedSky = localStorage.getItem('willow_skybox_env') || 'tavern';
-    const savedCustomUrl = localStorage.getItem('willow_skybox_custom_url') || '';
+    const savedCustomUrl = localStorage.getItem('willow_skybox_custom_url')
+      || localStorage.getItem('willow_skybox_custom_data')
+      || '';
     this.setSkybox(savedSky, savedCustomUrl, false);
+  },
+
+  // Redimensiona/comprime uma imagem 360° (equiretangular 2:1) para caber na rede e rodar leve.
+  compressPanoramaDataUrl(dataUrl, maxBytesChars = 170000) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const srcW = img.naturalWidth || img.width;
+        const srcH = img.naturalHeight || img.height;
+        const ratio = srcW / Math.max(1, srcH);
+        const attempts = [
+          [2048, 0.72], [2048, 0.58], [1792, 0.55], [1536, 0.5], [1280, 0.45], [1024, 0.42]
+        ];
+        let best = null;
+        for (const [w, q] of attempts) {
+          const h = Math.round(w / 2);
+          const c = document.createElement('canvas');
+          c.width = w;
+          c.height = h;
+          const ctx = c.getContext('2d');
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, w, h);
+          best = c.toDataURL('image/jpeg', q);
+          if (best.length <= maxBytesChars) break;
+        }
+        resolve({ url: best, ratio, fits: best.length <= maxBytesChars });
+      };
+      img.onerror = () => reject(new Error('Imagem inválida'));
+      img.src = dataUrl;
+    });
+  },
+
+  // Importa um arquivo de imagem 360° do computador e aplica como fundo (sincroniza com os jogadores)
+  importPanoramaFile(file) {
+    if (!file) return;
+    if (window.Multiplayer && !window.Multiplayer.isHost && window.Multiplayer.roomCode) {
+      window.App?.showToast('Só o Mestre pode trocar o cenário de fundo.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const result = await this.compressPanoramaDataUrl(e.target.result);
+        this.setSkybox('custom', result.url, true);
+        const note = Math.abs(result.ratio - 2) > 0.25
+          ? ' Dica: imagens 360° ideais têm proporção 2:1; a sua foi ajustada.'
+          : '';
+        const sync = result.fits ? '' : ' (grande demais para sincronizar; só você verá)';
+        window.App?.showToast(`Cenário 360° aplicado${sync}.${note}`);
+      } catch (err) {
+        window.App?.showToast('Não foi possível ler essa imagem.');
+      }
+    };
+    reader.readAsDataURL(file);
   },
 
   // ==========================================================================
@@ -155,6 +211,9 @@ window.Effects3D = {
       localStorage.setItem('willow_skybox_env', this.currentSkybox);
       if (this.customSkyboxUrl && !this.customSkyboxUrl.startsWith('data:')) {
         localStorage.setItem('willow_skybox_custom_url', this.customSkyboxUrl);
+        localStorage.removeItem('willow_skybox_custom_data');
+      } else if (this.customSkyboxUrl && this.customSkyboxUrl.length < 1500000) {
+        localStorage.setItem('willow_skybox_custom_data', this.customSkyboxUrl);
       }
     } catch (e) {}
 
