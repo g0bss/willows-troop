@@ -1059,10 +1059,14 @@ window.App = {
 
     const isGM = window.Multiplayer.myRole === 'gm';
     const isInvisible = (pieceData.conditions || []).includes('invisible');
-    const showHp = pieceData.maxHp > 0 && pieceData.style !== 'prop' && pieceData.style !== 'pin';
-    const hpPercent = showHp ? Math.max(0, Math.min(100, (pieceData.hp / pieceData.maxHp) * 100)) : 0;
-    const hpColor = hpPercent > 50 ? '#4d9e6d' : (hpPercent > 25 ? '#d99b26' : '#c94a4a');
+    const curHp = Number(pieceData.hp) || 0;
+    const maxHp = Number(pieceData.maxHp) || 0;
+    const hasTempHp = maxHp > 0 && curHp > maxHp;
+    const showHp = maxHp > 0 && pieceData.style !== 'prop' && pieceData.style !== 'pin';
+    const hpPercent = showHp ? Math.max(0, Math.min(100, (curHp / maxHp) * 100)) : 0;
+    const hpColor = hasTempHp ? '#38bdf8' : (hpPercent > 50 ? '#4d9e6d' : (hpPercent > 25 ? '#d99b26' : '#c94a4a'));
     const acHtml = (isGM && pieceData.ac) ? `<span class="ac-badge">CA ${pieceData.ac}</span>` : '';
+    const tempHpBadge = hasTempHp ? `<span class="ac-badge" style="background:rgba(56,189,248,0.22); color:#7dd3fc; border-color:rgba(56,189,248,0.45);" title="Vida Temporária / Extra">+${curHp - maxHp}</span>` : '';
     const invBadge = (isGM && isInvisible) ? `<span class="ac-badge" style="background:rgba(96,165,250,0.22); color:#93c5fd;">OCULTO</span>` : '';
 
     const condMap = {
@@ -1086,6 +1090,7 @@ window.App = {
         <span>${this.escapeHtml(pieceData.name || 'Peça')}</span>
         ${condBadges}
         ${acHtml}
+        ${tempHpBadge}
         ${invBadge}
       </div>
       ${showHp ? `
@@ -2974,12 +2979,24 @@ window.App = {
     const txt = document.getElementById('insp-hp-text');
     const max = Number(piece.maxHp) || 0;
     const cur = Number(piece.hp) || 0;
+    const hasTemp = max > 0 && cur > max;
     const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
     if (bar) {
       bar.style.width = `${pct}%`;
-      bar.style.background = pct > 50 ? '#4d9e6d' : (pct > 25 ? '#d99b26' : '#c94a4a');
+      if (hasTemp) {
+        bar.style.width = '100%';
+        bar.style.background = 'linear-gradient(90deg, #4d9e6d, #38bdf8)';
+      } else {
+        bar.style.background = pct > 50 ? '#4d9e6d' : (pct > 25 ? '#d99b26' : '#c94a4a');
+      }
     }
-    if (txt) txt.textContent = `${cur} / ${max}`;
+    if (txt) {
+      if (hasTemp) {
+        txt.innerHTML = `<strong>${cur}</strong> / ${max} <span style="color:#7dd3fc; font-size:11px; margin-left:3px;" title="Vida temporária / extra">(+${cur - max})</span>`;
+      } else {
+        txt.textContent = `${cur} / ${max}`;
+      }
+    }
   },
 
   applyHpDelta(sign) {
@@ -3019,14 +3036,15 @@ window.App = {
     const p = this.pieces.get(this.selectedPieceId);
     if (!p) return;
     const oldHp = p.hp || 0;
-    p.hp = Math.max(0, Math.min(p.maxHp || 999, (p.hp || 0) + delta));
+    // Permite ultrapassar maxHp para acomodar vida temporária/extra (ex: 35/30)
+    p.hp = Math.max(0, (p.hp || 0) + delta);
     const actualDelta = p.hp - oldHp;
     const hpInput = document.getElementById('insp-hp');
     if (hpInput) hpInput.value = p.hp;
     this.addOrUpdatePiece(p, true);
 
     const txt = actualDelta > 0 ? `+${actualDelta}` : `${actualDelta}`;
-    const col = actualDelta > 0 ? '#4ade80' : '#ef4444';
+    const col = actualDelta > 0 ? (p.hp > p.maxHp ? '#38bdf8' : '#4ade80') : '#ef4444';
     const mesh = this.pieceMeshes.get(p.id);
     const posY = mesh ? mesh.position.y + 2.5 : 2.5;
     this.spawnFloatingText(p.x, posY, p.z, txt, col);
@@ -3050,7 +3068,8 @@ window.App = {
     if (actualDelta < 0) {
       this.addChatMessage(`<strong>${this.escapeHtml(p.name)}</strong> sofreu <strong>${Math.abs(actualDelta)}</strong> de dano (PV ${p.hp}/${p.maxHp})`, 'crit-fail');
     } else if (actualDelta > 0) {
-      this.addChatMessage(`<strong>${this.escapeHtml(p.name)}</strong> recuperou <strong>${actualDelta}</strong> PV (PV ${p.hp}/${p.maxHp})`, 'crit-success');
+      const tempNote = (p.hp > p.maxHp && p.maxHp > 0) ? ` [inclui +${p.hp - p.maxHp} extra/temporário]` : '';
+      this.addChatMessage(`<strong>${this.escapeHtml(p.name)}</strong> recuperou <strong>${actualDelta}</strong> PV (PV ${p.hp}/${p.maxHp}${tempNote})`, 'crit-success');
     }
     this.refreshInspectorHpReadout(p);
   },
