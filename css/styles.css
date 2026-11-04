@@ -1041,35 +1041,67 @@ input[type="color"] {
 }
 .hp-apply-btn.hp-heal:hover { background: rgba(77, 158, 109, 0.16); }
 
-/* Inspector: rodapé com ações discretas */
+/* Inspector: rodapé com botões de ação estruturados */
 .inspector-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 14px;
-  padding: 2px 2px 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.inspector-footer-spacer { flex: 1; }
-
-.link-btn {
-  background: none;
-  border: none;
-  padding: 2px 0;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: rgba(255, 255, 255, 0.18);
-  text-underline-offset: 3px;
-}
-
-.link-btn:hover {
+.btn-action {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
   color: var(--text-primary);
-  text-decoration-color: currentColor;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  user-select: none;
 }
 
-.link-btn-danger:hover { color: #e08a8a; }
+.btn-action svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.btn-action:hover {
+  background: var(--bg-hover);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.btn-action:active {
+  transform: translateY(0);
+}
+
+.btn-action-danger {
+  background: rgba(201, 74, 74, 0.12);
+  border-color: rgba(201, 74, 74, 0.35);
+  color: #fca5a5;
+}
+
+.btn-action-danger:hover {
+  background: rgba(201, 74, 74, 0.26);
+  border-color: rgba(201, 74, 74, 0.55);
+  color: #fff;
+}
 
 /* Trilha sonora (Spotify) */
 #music-drawer {
